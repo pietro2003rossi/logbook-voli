@@ -530,7 +530,11 @@ const ICON={
   x:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
   back:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   search:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
-  plus:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>'
+  plus:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  chev:'<svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chk:'<svg class="chk" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev:'<svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chk:'<svg class="chk" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
 
 /* ---------------- dati e salvataggio ---------------- */
@@ -647,7 +651,8 @@ const cityOf=c=>{const a=apt(c);return a?a.city:'';};
 const alliance=a=>{const v=IDX.al[String(a||'').trim().toLowerCase()];return v&&v!=='/'?v:'';};
 function aptLL(code){const r=IDX.ap[String(code||'').toUpperCase()];if(!r||IDX.lat<0)return null;const la=r[IDX.lat],lo=r[IDX.lon];return typeof la==='number'&&typeof lo==='number'&&Math.abs(la)<=90&&Math.abs(lo)<=180?[la,lo]:null;}
 // Distanza ortodromica con la formula dell'emisenoverso (haversine), Terra sferica di raggio medio R = 6371 km
-function gcKm(a,b){const A=aptLL(a),B=aptLL(b);if(!A||!B)return null;const r=Math.PI/180,p1=A[0]*r,p2=B[0]*r,dp=p2-p1,dl=(B[1]-A[1])*r;const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*6371*Math.asin(Math.min(1,Math.sqrt(h)));}
+function haversineKm(a,b){const r=Math.PI/180,p1=a[0]*r,p2=b[0]*r,dp=p2-p1,dl=(b[1]-a[1])*r;const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*6371*Math.asin(Math.min(1,Math.sqrt(h)));}
+function gcKm(a,b){const A=aptLL(a),B=aptLL(b);if(!A||!B)return null;return haversineKm(A,B);}
 // Stima CO2 per passeggero, metodo myclimate (aggiornamento 2023).
 // E = (a·x² + b·x + c) / (S·PLF) · (1−CF) · CW · (EF·M + P) + AF·x + A,  con x = ortodromica + 95 km
 const CO2_K={DC:95,EF:3.16,P:0.538,M:3,AF:0.00034,A:11.68};
@@ -658,55 +663,50 @@ const CO2_P={
   b737:{S:148,PLF:0.796,CF:0.23,a:0.00016,b:1.454,c:1531.722,CW:CO2_CW_S,lbl:'Boeing 737'},
   a320:{S:165,PLF:0.796,CF:0.26,a:0.000032,b:2.588,c:1212.084,CW:CO2_CW_S,lbl:'famiglia A320'},
   b777:{S:370,PLF:0.82,CF:0.45,a:0.00034,b:6.112,c:3403.041,CW:CO2_CW_L,lbl:'Boeing 777'},
-  a330:{S:287,PLF:0.82,CF:0.06,a:0.00034,b:4.384,c:2457.737,CW:CO2_CW_L,lbl:'Airbus A330'}
+  a330:{S:287,PLF:0.82,CF:0.06,a:0.00034,b:4.384,c:2457.737,CW:CO2_CW_L,lbl:'Airbus A330'},
+  b787_a350:{S:290,PLF:0.82,CF:0.20,a:0.00022,b:2.85,c:2580,CW:CO2_CW_L,lbl:'Boeing 787 / Airbus A350'},
+  a380_a340:{S:520,PLF:0.82,CF:0.20,a:0.00038,b:6.85,c:4500,CW:CO2_CW_L,lbl:'Airbus A380 / A340'},
+  regional:{S:105,PLF:0.78,CF:0.10,a:0.00004,b:2.10,c:980,CW:CO2_CW_S,lbl:'jet regionali (A220 / E-Jets)'}
 };
 // Distanza effettivamente volata da un CSV di Flightradar24:
 // somma degli archi ortodromici tra punti consecutivi con quota > 0 (dal decollo all'atterraggio, rullaggio escluso).
 function parseCsvLine(s){const out=[];let cur='',q=false;for(let i=0;i<s.length;i++){const c=s[i];if(q){if(c==='"'){if(s[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else if(c==='"')q=true;else if(c===','){out.push(cur);cur='';}else cur+=c;}out.push(cur);return out;}
-function haversineKm(a,b){const r=Math.PI/180,p1=a[0]*r,p2=b[0]*r,dp=p2-p1,dl=(b[1]-a[1])*r;const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*6371*Math.asin(Math.min(1,Math.sqrt(h)));}
-function fr24Track(text){
-  const lines=String(text).replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
-  if(lines.length<3)throw new Error('Il file non contiene una traccia di volo.');
-  const H=parseCsvLine(lines[0]).map(h=>h.trim().toLowerCase()),ix=n=>H.indexOf(n);
-  const iT=ix('timestamp'),iU=ix('utc'),iP=ix('position'),iLa=ix('latitude'),iLo=ix('longitude'),iA=ix('altitude');
-  if((iP<0&&(iLa<0||iLo<0))||iA<0)throw new Error('Non sembra un CSV di Flightradar24: mancano le colonne Position e Altitude.');
-  const pts=[];
-  for(let k=1;k<lines.length;k++){
-    const c=parseCsvLine(lines[k]);let la,lo;
-    if(iP>=0){const p=String(c[iP]||'').split(',');la=parseFloat(p[0]);lo=parseFloat(p[1]);}else{la=parseFloat(c[iLa]);lo=parseFloat(c[iLo]);}
-    const alt=parseFloat(c[iA]),t=iT>=0?parseFloat(c[iT]):(iU>=0?Date.parse(c[iU])/1000:NaN);
-    if(!isFinite(la)||!isFinite(lo)||Math.abs(la)>90||Math.abs(lo)>180)continue;
-    pts.push({t,la,lo,alt:isFinite(alt)?alt:0});
-  }
-  if(pts.length&&pts.every(p=>isFinite(p.t)))pts.sort((a,b)=>a.t-b.t);
-  return pts;
-}
-function fr24Distance(pts){
-  const air=pts.filter(p=>p.alt>0);
-  if(air.length<2)throw new Error('Nella traccia non ci sono punti in volo.');
-  const v=(x,y)=>{const dt=Math.abs(y.t-x.t);return isFinite(dt)&&dt>0?haversineKm([x.la,x.lo],[y.la,y.lo])/(dt/3600):0;};
-  // scarta i salti di posizione isolati: punto irraggiungibile (oltre 1.300 km/h) sia dal precedente sia verso il successivo
-  const ok=[air[0]];
-  for(let i=1;i<air.length-1;i++){const a=ok[ok.length-1],p=air[i],b=air[i+1];if(v(a,p)>1300&&v(p,b)>1300&&v(a,b)<=1300)continue;ok.push(p);}
-  ok.push(air[air.length-1]);
-  let km=0;for(let i=1;i<ok.length;i++)km+=haversineKm([ok[i-1].la,ok[i-1].lo],[ok[i].la,ok[i].lo]);
-  return {km,first:ok[0],last:ok[ok.length-1]};
-}
+function isLightProp(ac){const s=String(ac||'').toUpperCase();return /CESSNA|PA-?\d+|PIPER|BEECH|SR22|DA40|DA42|P2006T/i.test(s);}
 function co2Class(c){c=String(c||'').toLowerCase();if(c.includes('first'))return 'first';if(c.includes('business'))return 'bus';if(c.includes('premium'))return 'pe';return 'eco';}
-function co2Family(ac){ac=String(ac||'').toUpperCase().replace(/\s+/g,'');if(/^B737/.test(ac))return 'b737';if(/^A3(18|19|20|21)/.test(ac))return 'a320';if(/^B777/.test(ac))return 'b777';if(/^A330/.test(ac))return 'a330';return null;}
+function co2Family(ac){
+  ac=String(ac||'').toUpperCase().replace(/\s+/g,'');
+  if(isLightProp(ac))return 'ga_prop';
+  if(/^B737/.test(ac))return 'b737';
+  if(/^A3(18|19|20|21)/.test(ac))return 'a320';
+  if(/^(?:B787|A350)/.test(ac))return 'b787_a350';
+  if(/^(?:A380|A340)/.test(ac))return 'a380_a340';
+  if(/^B777/.test(ac))return 'b777';
+  if(/^A330/.test(ac))return 'a330';
+  if(/^(?:E-?1\d\d|A220)/.test(ac))return 'regional';
+  return null;
+}
 function co2Leg(p,x,cls,M){const fuel=p.a*x*x+p.b*x+p.c;return fuel/(p.S*p.PLF)*(1-p.CF)*p.CW[cls]*(CO2_K.EF*M+CO2_K.P)+CO2_K.AF*x+CO2_K.A;}
 function co2Est(f){
-  if(!f||!f.from||!f.to||f.from===f.to)return null;
+  if(!f)return null;
+  const fam=co2Family(f.ac);
+  if(fam==='ga_prop'){
+    let dur=f._dur!=null?f._dur:duration(f);
+    if(!dur&&+f.dist>0) dur=Math.round((+f.dist/240)*60);
+    if(!dur) dur=40;
+    const total=(dur/60)*22.4;
+    return {total,co2:total/CO2_K.M,x:+f.dist||0,fromGc:false,clsAssumed:false,model:'aviazione generale (monomotore)'};
+  }
+  if(!f.from||!f.to||f.from===f.to)return null;
   const gc=gcKm(f.from,f.to),d=gc!=null?gc:(+f.dist>0?+f.dist:null);if(!d)return null;
-  const x=d+CO2_K.DC,cls=co2Class(f.cls),fam=co2Family(f.ac);
+  const x=d+CO2_K.DC,cls=co2Class(f.cls);
   const calc=M=>{
-    if(fam)return co2Leg(CO2_P[fam],x,cls,M);
+    if(fam&&CO2_P[fam])return co2Leg(CO2_P[fam],x,cls,M);
     if(x<=1500)return co2Leg(CO2_P.short,x,cls,M);
     if(x>=2500)return co2Leg(CO2_P.long,x,cls,M);
     const t=(x-1500)/1000;return (1-t)*co2Leg(CO2_P.short,x,cls,M)+t*co2Leg(CO2_P.long,x,cls,M);
   };
   return {total:calc(CO2_K.M),co2:calc(1),x,fromGc:gc!=null,clsAssumed:!f.cls,
-    model:fam?'parametri '+CO2_P[fam].lbl:(x<=1500?'aereo medio di corto raggio':x>=2500?'aereo medio di lungo raggio':'media tra corto e lungo raggio')};
+    model:fam&&CO2_P[fam]?'parametri '+CO2_P[fam].lbl:(x<=1500?'aereo medio di corto raggio':x>=2500?'aereo medio di lungo raggio':'media tra corto e lungo raggio')};
 }
 function parseTz(s){const m=String(s||'').match(/([+\-−])\s*(\d{1,2})(?:[:.](\d{2}))?/);if(!m)return null;const v=+m[2]+(m[3]?+m[3]/60:0);return m[1]==='+'?v:-v;}
 // Calcolo ISA, Density Altitude e 3 categorie operative: H&H, HIGH, HOT
@@ -733,7 +733,7 @@ function opBadgeHTML(isa,full){
 /* ---------------- calcoli (stesse formule del file Excel) ---------------- */
 const toMin=s=>{if(!s||!/^\d{1,2}:\d{2}/.test(s))return null;const [h,m]=s.split(':').map(Number);return h*60+m;};
 // Durata = (atterraggio − decollo) se atterraggio > decollo, altrimenti (24h − decollo + atterraggio); poi + fuso (ore).
-function duration(f){const a=toMin(f.dep),b=toMin(f.arr);if(a==null||b==null)return null;return (b>a?b-a:1440-a+b)+Math.round((Number(f.tz)||0)*60);}
+function duration(f){const a=toMin(f.dep),b=toMin(f.arr);if(a==null||b==null)return null;const diff=b===a?0:(b>a?b-a:1440-a+b);return diff+Math.round((Number(f.tz)||0)*60);}
 const isISO=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
 const dnum=s=>{const [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)/86400000;};
 // Età dell'aereo = (data del volo − data di entrata in servizio) / 365,25  [anni]
@@ -777,8 +777,8 @@ const row=(k,v)=>`<div class="row"><dt>${esc(k)}</dt><dd>${esc(show(v))}</dd></d
 const rowH=(k,html,attr='')=>`<div class="row ${attr?'click':''}" ${attr}><dt>${esc(k)}</dt><dd>${html}</dd></div>`;
 const routeH=(a,b)=>`<span class="route">${esc(a)}${ICON.arrow}${esc(b)}</span>`;
 function head(title){const back=stack.length>1;return `<div class="sheet-head"><button class="icon-btn" data-close aria-label="${back?'Indietro':'Chiudi'}">${back?ICON.back:ICON.x}</button><h2>${esc(title)}</h2><div class="sh-right"></div></div>`;}
-const CHEV_SVG='<svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const CHK_SVG='<svg class="chk" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHEV_SVG=ICON.chev;
+const CHK_SVG=ICON.chk;
 function sel(id,opts,val,label,inForm){
   const cur=opts.find(([v])=>String(v)===String(val))||opts[0]||['',''];
   const isAct=!inForm&&String(cur[0])!=='all'&&String(cur[0])!=='default'&&String(cur[0])!=='';
@@ -1279,8 +1279,8 @@ function flightForm(draft0,opts={}){
       const d=collect(),errs={};
       if(d.airline){const k=Object.keys(S.alliances).find(k=>k.trim().toLowerCase()===d.airline.toLowerCase());if(k)d.airline=k;}
       if(!isISO(d.date))errs.date='Inserisci la data';
-      if(!/^[A-Z]{3,4}$/.test(d.from))errs.from='Codice IATA di 3 lettere';
-      if(!/^[A-Z]{3,4}$/.test(d.to))errs.to='Codice IATA di 3 lettere';
+      if(!/^[A-Z]{3,4}$/.test(d.from))errs.from='Codice di 3 o 4 lettere (es. MXP)';
+      if(!/^[A-Z]{3,4}$/.test(d.to))errs.to='Codice di 3 o 4 lettere (es. JFK)';
       if(!planned){if(toMin(d.dep)==null)errs.dep='Inserisci l’ora di decollo';if(toMin(d.arr)==null)errs.arr='Inserisci l’ora di atterraggio';}
       if(Number.isNaN(d.tz)||Math.abs(d.tz)>26)errs.tz='Numero di ore, es. −1 o 5,5';
       if(d.dist!==''&&(Number.isNaN(d.dist)||d.dist<0))errs.dist='Numero di chilometri';
@@ -1367,7 +1367,15 @@ function topAirports(exclude){
 function numSortVal(v){
   if(v==null||v===''||v==='/')return null;
   if(typeof v==='number')return isNaN(v)?null:v;
-  const s=String(v).replace(/\+/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.').trim();
+  let s=String(v).replace(/\+/g,'').trim();
+  if(s.includes('.')&&s.includes(',')){
+    if(s.indexOf('.')<s.indexOf(',')) s=s.replace(/\./g,'').replace(',','.');
+    else s=s.replace(/,/g,'');
+  }else if(s.includes(',')){
+    s=s.replace(',','.');
+  }else if((s.match(/\./g)||[]).length>1){
+    s=s.replace(/\./g,'');
+  }
   const n=parseFloat(s);
   return isNaN(n)?null:n;
 }
@@ -1557,7 +1565,11 @@ function aircraftDetail(model){return el=>{
  <div class="actions"><button class="btn danger" data-act="del">Elimina</button><span class="spacer"></span><button class="btn" data-act="cmp">Confronta</button><button class="btn primary" data-act="edit">Modifica</button></div>`;
  el.querySelector('[data-act=edit]').onclick=()=>openSheet(recordForm('aircraft',model));
  el.querySelector('[data-act=cmp]').onclick=()=>{const others=topAircraft(model);openSheet(compareSheet(model,others[0]||model,others[1]||model),true);};
- el.querySelector('[data-act=del]').onclick=()=>{const snap=serialize(S);S.aircraft.rows=S.aircraft.rows.filter(x=>x[0]!==model);buildIndex();commit();closeSheet(true);render();toast(`${model} eliminato dall’archivio`,snap);};
+ el.querySelector('[data-act=del]').onclick=()=>{
+  const used=S.flights.concat(S.planned).filter(f=>f.ac===model).length;
+  if(used>0){if(!confirm(`Attenzione: "${model}" è associato a ${used} ${used===1?'volo':'voli'} nel logbook. Se lo elimini, quei voli rimarranno senza scheda tecnica. Vuoi eliminarlo comunque?`))return;}
+  const snap=serialize(S);S.aircraft.rows=S.aircraft.rows.filter(x=>x[0]!==model);buildIndex();commit();closeSheet(true);render();toast(`${model} eliminato dall’archivio`,snap);
+};
 };}
 function bindCompareCards(el,items,selected,onPick,customMatcher){
  const wraps=el.querySelectorAll('.cmp-card-wrap');
@@ -1781,41 +1793,62 @@ function airportDetail(code){return el=>{
  <div class="actions"><button class="btn danger" data-act="del">Elimina</button><span class="spacer"></span><button class="btn" data-act="cmp">Confronta</button><button class="btn primary" data-act="edit">Modifica</button></div>`;
  el.querySelector('[data-act=edit]').onclick=()=>openSheet(recordForm('airports',r[0]));
  el.querySelector('[data-act=cmp]').onclick=()=>{const others=topAirports(r[0]);openSheet(compareAirportsSheet(r[0],others[0]||r[0],others[1]||r[0]),true);};
- el.querySelector('[data-act=del]').onclick=()=>{const snap=serialize(S);S.airports.rows=S.airports.rows.filter(x=>x[0]!==r[0]);buildIndex();commit();closeSheet(true);render();toast(`${r[0]} eliminato dall’archivio`,snap);};
+ el.querySelector('[data-act=del]').onclick=()=>{
+  const code=r[0],used=S.flights.concat(S.planned).filter(f=>f.from===code||f.to===code).length;
+  if(used>0){if(!confirm(`Attenzione: ${code} è associato a ${used} ${used===1?'volo':'voli'} nel logbook. Se lo elimini, quei voli rimarranno senza scheda aeroportuale. Vuoi eliminarlo comunque?`))return;}
+  const snap=serialize(S);S.airports.rows=S.airports.rows.filter(x=>x[0]!==code);buildIndex();commit();closeSheet(true);render();toast(`${code} eliminato dall’archivio`,snap);
+};
 };}
 
 /* ---------------- form generico (aerei / aeroporti) ---------------- */
-function parseCell(s){s=String(s??'').trim();if(s==='')return '';const clean=s.replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.');if(/^-?\d+(\.\d+)?$/.test(clean))return Number(clean);return s;}
+function parseCell(s){
+  s=String(s??'').trim();if(s==='')return '';
+  let clean=s;
+  if(clean.includes('.')&&clean.includes(',')){
+    if(clean.indexOf('.')<clean.indexOf(',')) clean=clean.replace(/\./g,'').replace(',','.');
+    else clean=clean.replace(/,/g,'');
+  }else if(clean.includes(',')){
+    clean=clean.replace(',','.');
+  }else if((clean.match(/\./g)||[]).length>1){
+    clean=clean.replace(/\./g,'');
+  }
+  if(/^-?\d+(\.\d+)?$/.test(clean))return Number(clean);
+  return s;
+}
 function recordForm(kind,key,prefill={}){return el=>{
   const T=S[kind],isAc=kind==='aircraft';
   const idx=key!=null?T.rows.findIndex(r=>String(r[0])===String(key)):-1;
   const vals=idx>=0?[...T.rows[idx]]:T.cols.map((c,i)=>prefill[i]??'');
   const comp=isAc?AC_COMPUTED:{};
-  // piste: lunga, corta e larga si ricavano dal dettaglio piste, non si scrivono a mano
-  const rwyAuto=isAc?{}:Object.fromEntries([['Pista più lunga (m)','max'],['Pista più corta (m)','min'],['Pista più larga (m)','wid']].map(([n,k])=>[T.cols.indexOf(n),k]).filter(([i])=>i>=0));
+  // piste: numero, lunga, corta e larga si ricavano dal dettaglio piste, non si scrivono a mano
+  const rwyAuto=isAc?{}:Object.fromEntries([['Numero piste','count'],['Pista più lunga (m)','max'],['Pista più corta (m)','min'],['Pista più larga (m)','wid']].map(([n,k])=>[T.cols.indexOf(n),k]).filter(([i])=>i>=0));
   const display=(v,i)=>comp[i]?(typeof v==='number'?nf2.format(v):''):(v==null||v==='/'?'':String(v));
   el.innerHTML=`${head(idx>=0?'Modifica '+vals[0]:(isAc?'Nuovo modello':'Nuovo aeroporto'))}
   <form class="form" novalidate autocomplete="off">
-    ${T.groups.map(([g,a,b])=>`<fieldset><legend>${esc(g)}</legend><div class="grid">${range(a,b).map(i=>{
+    ${T.groups.map(([g,a,b])=>`<fieldset><legend>${esc(g)}</legend><div class="grid">${range(a,b).filter(i=>!rwyAuto[i]).map(i=>{
       const isRw=!isAc&&T.cols[i]===RWYC;
-      const hText=comp[i]?'Calcolato: '+esc(comp[i]):(!isAc&&i===6?'Formato UTC +1':(!isAc&&T.cols[i]===LATC?'Gradi decimali, nord positivo (es. 45,63)':(!isAc&&T.cols[i]===LONC?'Gradi decimali, est positivo (es. 8,72)':(isRw?'Separa le piste con // (es. 17L/35R · 3920×60 m // 17R/35L · 3920×60 m): calcola in automatico N° piste, più lunga e più corta':''))));
-      return fld('c'+i,T.cols[i],`<input id="i-c${i}" name="c${i}" value="${esc(display(vals[i],i))}" ${comp[i]||rwyAuto[i]?'readonly tabindex="-1"':''} ${i===0&&idx<0&&!vals[0]?'autofocus':''} ${!isAc&&i===0?'class="upper" maxlength="4"':''} ${isRw?'placeholder="17L/35R · 3920×60 m // 17R/35L · 3920×60 m"':''}>`,rwyAuto[i]?'Calcolato dal dettaglio piste':hText,isRw);
+      const rwSt=isRw&&vals[i]?parseRunwayStats(vals[i]):null;
+      const rwHint=rwSt?`Calcolato in automatico: ${rwSt.count} ${rwSt.count===1?'pista':'piste'} · max ${rwSt.max||'—'} m · min ${rwSt.min||'—'} m · largh. ${rwSt.wid||'—'} m`:'Separa le piste con // (es. 17L/35R · 3920×60 m // 17R/35L · 3920×60 m): calcola in automatico N° piste, più lunga, più corta e più larga';
+      const hText=comp[i]?'Calcolato: '+esc(comp[i]):(!isAc&&i===6?'Formato UTC +1':(!isAc&&T.cols[i]===LATC?'Gradi decimali, nord positivo (es. 45,63)':(!isAc&&T.cols[i]===LONC?'Gradi decimali, est positivo (es. 8,72)':(isRw?rwHint:''))));
+      return fld('c'+i,T.cols[i],`<input id="i-c${i}" name="c${i}" value="${esc(display(vals[i],i))}" ${comp[i]?'readonly tabindex="-1"':''} ${i===0&&idx<0&&!vals[0]?'autofocus':''} ${!isAc&&i===0?'class="upper" maxlength="4"':''} ${isRw?'placeholder="17L/35R · 3920×60 m // 17R/35L · 3920×60 m"':''}>`,hText,isRw);
     }).join('')}</div></fieldset>`).join('')}
     <div class="actions"><button type="button" class="btn" data-close>Annulla</button><button type="submit" class="btn primary">Salva</button></div>
   </form>`;
   const form=el.querySelector('form');
   form.addEventListener('input',e=>{const f=e.target.closest('.f');if(f){f.classList.remove('err');f.querySelector('.msg').textContent='';}
-    if(isAc){const r=T.cols.map((c,i)=>parseCell(form.elements['c'+i].value));computeAircraft(r);Object.keys(comp).forEach(i=>{form.elements['c'+i].value=typeof r[i]==='number'?nf2.format(r[i]):'';});}
+    if(isAc){const r=T.cols.map((c,i)=>parseCell(form.elements['c'+i]?.value));computeAircraft(r);Object.keys(comp).forEach(i=>{if(form.elements['c'+i])form.elements['c'+i].value=typeof r[i]==='number'?nf2.format(r[i]):'';});}
     else if(e.target.name==='c'+T.cols.indexOf(RWYC)){
       const st=parseRunwayStats(e.target.value);
-      if(st&&form.elements.c14)form.elements.c14.value=st.count;
-      Object.entries(rwyAuto).forEach(([i,k])=>{if(form.elements['c'+i])form.elements['c'+i].value=st&&st[k]!=null?st[k]:'';});
+      const hintEl=form.querySelector('[data-hint=c'+T.cols.indexOf(RWYC)+']');
+      if(hintEl){
+        hintEl.textContent=st?`Calcolato in automatico: ${st.count} ${st.count===1?'pista':'piste'} · max ${st.max||'—'} m · min ${st.min||'—'} m · largh. ${st.wid||'—'} m`:'Separa le piste con // (es. 17L/35R · 3920×60 m // 17R/35L · 3920×60 m): calcola in automatico N° piste, più lunga, più corta e più larga';
+      }
     }
   });
   form.addEventListener('submit',e=>{
     e.preventDefault();
-    const r=T.cols.map((c,i)=>parseCell(form.elements['c'+i].value));
-    if(!isAc){r[0]=String(r[0]).toUpperCase();const ri=T.cols.indexOf(RWYC),st=ri>=0?parseRunwayStats(r[ri]):null;Object.entries(rwyAuto).forEach(([i,k])=>{r[i]=st&&st[k]!=null?st[k]:'/';});}
+    const r=T.cols.map((c,i)=>form.elements['c'+i]?parseCell(form.elements['c'+i].value):(idx>=0?vals[i]:''));
+    if(!isAc){const ri=T.cols.indexOf(RWYC),st=ri>=0?parseRunwayStats(r[ri]):null;Object.entries(rwyAuto).forEach(([i,k])=>{r[i]=st&&st[k]!=null?st[k]:(idx>=0?vals[i]:'/');});r[0]=String(r[0]).toUpperCase();}
     if(isAc)computeAircraft(r);
     const k=String(r[0]).trim();
     const dup=T.rows.findIndex(x=>String(x[0]).toUpperCase()===k.toUpperCase());
@@ -1840,9 +1873,12 @@ function downloadCopy(){
   downloadCopyOf(S);
   toast('Copia aggiornata scaricata');
 }
+function cleanHtmlForExport(str){
+  return str.replace(/<style\s+class="darkreader[\s\S]*?<\/style>/gi,'').replace(/\s*data-(?:darkreader|extension|injected)[^=]*="[^"]*"/gi,'').replace(/<(?:div|span)\s+id="[^"]*(?:extension|darkreader|bitwarden|lastpass|grammarly)[^"]*"[\s\S]*?<\/(?:div|span)>/gi,'');
+}
 function downloadCopyOf(o){
   const data=serialize(o).replace(/</g,'\\u003c');
-  const html=PRISTINE.replace(/(<script type="application\/json" id="seed">)[\s\S]*?(<\/script>)/,(m,a,b)=>a+data+b);
+  const html=cleanHtmlForExport(PRISTINE).replace(/(<script type="application\/json" id="seed">)[\s\S]*?(<\/script>)/,(m,a,b)=>a+data+b);
   download(html,`DatabaseVoli_Marta_${stamp()}.html`,'text/html;charset=utf-8');
 }
 function exportJSON(){download(JSON.stringify(JSON.parse(serialize(S)),null,1),`Logbook-voli-backup-${stamp()}.json`,'application/json');toast('Backup esportato');}
@@ -1875,19 +1911,13 @@ function menuSheet(){return el=>{
   <p>Ultima modifica: ${esc(when)}. In archivio: ${S.flights.length} voli, ${S.planned.length} in programma, ${S.aircraft.rows.length} modelli, ${S.airports.rows.length} aeroporti.</p></div>
   <div class="menu">
     ${mi('copy','Scarica copia aggiornata del sito',unexported?'Ci sono modifiche non ancora salvate in un file. La copia contiene tutti i dati: aprila su qualsiasi computer o browser.':'Un nuovo file HTML con tutti i dati dentro, da aprire su qualsiasi computer o browser.')}
-    ${mi('json','Esporta backup (.json)','Un file da reimportare in qualsiasi momento.')}
-    ${mi('import','Importa backup','Sostituisce i dati attuali con quelli di un file .json.')}
-    ${mi('csv','Esporta voli per Excel (.csv)','Le stesse colonne del foglio “Tabella” del file originale.')}
     ${mi('reset','Ripristina i dati contenuti nel file','Annulla tutte le modifiche fatte da quando questo file è stato creato.','danger')}
   </div>
-  <p class="muted small">Scorciatoie: N nuovo volo, / cerca, ⌘S o Ctrl+S scarica copia aggiornata.</p>`;
+  <div class="actions"><button type="button" class="btn" data-close>Chiudi</button></div>`;
   el.querySelectorAll('[data-mact]').forEach(b=>b.onclick=()=>{
     const a=b.dataset.mact;
-    if(a==='copy'){downloadCopy();replaceSheet(menuSheet());}
-    else if(a==='json')exportJSON();
-    else if(a==='import')importFile.click();
-    else if(a==='csv')exportCSV();
-    else if(a==='reset'){if(!confirm('Ripristinare i dati contenuti nel file? Le modifiche successive andranno perse (puoi annullare subito dopo).'))return;const snap=serialize(S);S=fileState();buildIndex();persist();closeSheet(true);render();toast('Dati ripristinati',snap);}
+    if(a==='copy')downloadCopy();
+    else if(a==='reset'){if(confirm('Ripristinare i dati iniziali di questo file? Le modifiche fatte nel browser andranno perse.')){S=fileState();buildIndex();commit();closeSheet(true);render();toast('Dati del file ripristinati');}}
   });
 };}
 
