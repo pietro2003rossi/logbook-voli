@@ -47,8 +47,11 @@ svg{display:block}
 /* nav */
 .nav{position:sticky;top:0;z-index:40;background:var(--nav);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--sep);padding-top:env(safe-area-inset-top,0px)}
 .nav-inner{max-width:1280px;margin:0 auto;padding:0 20px;min-height:56px;display:flex;align-items:center;gap:12px}
-.brand{font-weight:600;font-size:19px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;white-space:nowrap;min-width:168px;flex:none}
-.brand svg{width:20px;height:20px;fill:var(--text);transform:rotate(45deg)}
+.brand-pop-wrap{position:relative;display:inline-flex;align-items:center;min-width:180px;flex:none}
+.brand{appearance:none;border:0;background:transparent;color:var(--text);font:inherit;font-weight:600;font-size:19px;letter-spacing:-.02em;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;padding:4px 6px 4px 2px;margin-left:-2px;border-radius:12px;cursor:pointer;min-width:0;max-width:100%;transition:background .15s}
+.brand:hover{background:rgba(255,255,255,.04)}
+.brand:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.brand .brand-ico{width:20px;height:20px;fill:var(--text);transform:rotate(45deg);flex:none}
 .tabs{display:flex;gap:2px;background:var(--fill);padding:3px;border-radius:999px;margin:0 auto;flex:none;overflow:visible;scrollbar-width:none;max-width:100%}
 .tabs::-webkit-scrollbar{display:none}
 .tabs button{appearance:none;border:0;background:transparent;font-size:13.5px;font-weight:500;color:var(--text-2);padding:6px 11px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
@@ -62,7 +65,7 @@ svg{display:block}
 @media (max-width:1200px){.save-state{min-width:auto}.save-state span{display:none}}
 @media (max-width:1100px){
   .nav-inner{flex-wrap:wrap;padding:8px 14px;gap:8px}
-  .brand{flex:1;min-width:0}
+  .brand-pop-wrap{flex:1;min-width:0}
   .tabs{order:3;width:100%;flex:0 0 100%;margin:0;overflow-x:auto}
   .tabs button{flex:1}
 }
@@ -607,7 +610,25 @@ button.habit-pill:hover{background:var(--fill-2);border-color:rgba(159,46,233,.4
 .seat-chip[aria-pressed="true"]{background:var(--accent-soft);color:#d28fff;border-color:var(--accent);font-weight:600}
 
 /* SkyLog brand, trip actions, SVG flags, country airport tiles & planned redesign */
-.brand-owner{font-size:12px;font-weight:500;color:var(--text-2);background:var(--fill);padding:2px 9px;border-radius:999px;margin-left:2px;letter-spacing:-.01em;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+.brand-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--text-2);background:var(--fill);padding:3px 8px 3px 9px;border-radius:999px;margin-left:1px;letter-spacing:-.01em;min-width:0;transition:background .15s,color .15s}
+.brand:hover .brand-pill{background:var(--fill-2);color:var(--text)}
+.brand-pop-wrap.open .brand-pill{background:var(--accent-soft);color:#d28fff}
+.brand-owner-txt{max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand-chev{width:9px;height:6px;fill:none;color:currentColor;opacity:.75;flex:none;transition:transform .2s}
+.brand-pop-wrap.open .brand-chev{transform:rotate(180deg);opacity:1}
+.brand-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:196px;max-width:calc(100vw - 28px);background:rgba(28,28,30,.94);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border:1px solid var(--sep);border-radius:16px;padding:6px;box-shadow:0 16px 40px rgba(0,0,0,.48);z-index:70;display:flex;flex-direction:column;gap:2px}
+.brand-menu[hidden]{display:none}
+.brand-menu-hd{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);padding:6px 10px 4px}
+.brand-item{appearance:none;border:0;background:transparent;color:var(--text);font:inherit;font-size:14px;font-weight:500;padding:8px 10px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;width:100%;text-decoration:none;transition:background .12s,color .12s}
+.brand-item:hover{background:var(--fill)}
+.brand-item.current{color:#d28fff;font-weight:600;background:var(--accent-soft)}
+.brand-item .chk{width:14px;height:14px;color:var(--accent);flex:none}
+.brand-link-arr{width:12px;height:12px;color:var(--text-3);flex:none;transition:transform .15s,color .15s}
+.brand-item:hover .brand-link-arr{color:var(--text-2);transform:translateX(2px)}
+body.is-globe .brand-pill{background:rgba(255,255,255,.12);color:rgba(255,255,255,.88)}
+body.is-globe .brand:hover .brand-pill{background:rgba(255,255,255,.2);color:#fff}
+body.is-globe .brand-pop-wrap.open .brand-pill{background:rgba(159,46,233,.32);color:#e2b8ff}
+body.is-globe .brand-menu{background:rgba(28,28,30,.9);border-color:rgba(255,255,255,.14);color:#f5f5f7}
 .trip-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
 .trip-actions-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .flag-svg{display:inline-flex;width:26px;height:18px;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,.16);flex:none;vertical-align:middle;box-shadow:0 1px 3px rgba(0,0,0,.28)}
@@ -686,7 +707,14 @@ button.habit-pill:hover{background:var(--fill-2);border-color:rgba(159,46,233,.4
 <body>
 <header class="nav">
   <div class="nav-inner">
-    <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"></path></svg><span>SkyLog</span><span class="brand-owner" id="brandOwner" hidden=""></span></div>
+    <div class="brand-pop-wrap" id="brandWrap">
+      <button type="button" class="brand" id="brandBtn" aria-haspopup="menu" aria-expanded="false" title="Cambia SkyLog">
+        <svg class="brand-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"></path></svg>
+        <span>SkyLog</span>
+        <span class="brand-pill"><span class="brand-owner-txt" id="brandOwner" hidden=""></span><svg class="brand-chev" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      </button>
+      <div class="brand-menu" id="brandMenu" role="menu" hidden=""></div>
+    </div>
     <nav class="tabs" aria-label="Sezioni">
       <button data-view="overview">Panoramica</button>
       <button data-view="globe">Globo</button>
@@ -776,9 +804,15 @@ function parseRunwayStats(raw){
   });
   return {count:parts.length,max:lens.length?Math.max(...lens):null,min:lens.length?Math.min(...lens):null,wid:wids.length?Math.max(...wids):null};
 }
+const SKYLOGS=[
+  {key:'logbook-voli-mio',name:'Pietro',file:'SkyLog_Pietro.html',url:'https://pietro2003rossi.github.io/logbook-voli/SkyLog_Pietro'},
+  {key:'logbook-voli-amore',name:'AmoreF',file:'SkyLog_AmoreF.html',url:'https://pietro2003rossi.github.io/logbook-voli/SkyLog_AmoreF'},
+  {key:'logbook-voli-marta',name:'Marta',file:'SkyLog_Marta.html',url:'https://pietro2003rossi.github.io/logbook-voli/SkyLog_Marta'}
+];
+function skylogHref(p){return location.protocol==='file:'?p.file:p.url;}
 function defaultOwner(key){
-  const m={'logbook-voli-mio':'Pietro','logbook-voli-amore':'AmoreF','logbook-voli-marta':'Marta'};
-  return m[String(key||'').trim()]||'';
+  const hit=SKYLOGS.find(x=>x.key===String(key||'').trim());
+  return hit?hit.name:'';
 }
 function syncBrand(){
   const ow=String(S?.owner||'').trim();
@@ -1584,13 +1618,19 @@ function matchPeerFlights(myFl,peerFl){
   const sharedMyIds=new Set(shared.map(x=>x.my.id));
   return {shared,sharedMyIds,usedPeer};
 }
+function exitPeer(showToast){
+  peer=null;ui.countryCmpFilter='all';ui.apCmpFilter='all';ui.acCmpFilter='all';
+  if(ui.globeColor==='compare')ui.globeColor='default';
+  renderPeerBanner();render();
+  if(showToast)toast('Confronto chiuso.');
+}
 function renderPeerBanner(){
   const b=document.getElementById('peerBanner');
   if(!b)return;
   if(!peer){b.hidden=true;b.innerHTML='';return;}
   b.hidden=false;
   b.innerHTML=`<span>Modalità <b>Viaggi Insieme</b> attiva con <b>${esc(peer.name)}</b> (${peer.rawFlights.length} voli)</span><button type="button" class="btn" id="peerExitBtn">Esci dal confronto</button>`;
-  document.getElementById('peerExitBtn').onclick=()=>{peer=null;ui.countryCmpFilter='all';ui.apCmpFilter='all';ui.acCmpFilter='all';if(ui.globeColor==='compare')ui.globeColor='default';renderPeerBanner();render();};
+  document.getElementById('peerExitBtn').onclick=()=>exitPeer(false);
 }
 function countBy(arr,key){const m=new Map();arr.forEach(x=>{const k=key(x);if(k==null||k==='')return;m.set(k,(m.get(k)||0)+1);});return [...m.entries()].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0])));}
 function fmtVal(v,col){
@@ -3856,7 +3896,7 @@ function menuSheet(){return el=>{
   el.querySelectorAll('[data-mact]').forEach(b=>b.onclick=()=>{
     const a=b.dataset.mact;
     if(a==='peer'){
-      if(peer){peer=null;ui.countryCmpFilter='all';ui.apCmpFilter='all';ui.acCmpFilter='all';if(ui.globeColor==='compare')ui.globeColor='freq';closeSheet(true);renderPeerBanner();render();toast('Confronto chiuso.');}
+      if(peer){closeSheet(true);exitPeer(true);}
       else document.getElementById('peerFile')?.click();
     }
     else if(a==='copy')downloadCopy();
@@ -4263,9 +4303,38 @@ function closeYearPopover(){
  const wrap=document.getElementById('globalYearWrap'),btn=document.getElementById('globalYearBtn'),menu=document.getElementById('globalYearMenu');
  if(wrap&&menu&&!menu.hidden){wrap.classList.remove('open');btn.setAttribute('aria-expanded','false');menu.hidden=true;}
 }
+function renderBrandMenu(){
+ const menu=document.getElementById('brandMenu');
+ if(!menu)return;
+ const curLabel=String(S?.owner||'').trim();
+ const arrSvg='<svg class="brand-link-arr" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6h8M6.5 2.5L10 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+ const rows=SKYLOGS.map(p=>{
+  if(p.key===KEY){
+   return `<button type="button" class="brand-item current" role="menuitem" aria-current="page" data-brand-cur><span>${esc(curLabel||p.name)}</span>${CHK_SVG}</button>`;
+  }
+  return `<a class="brand-item" role="menuitem" href="${esc(skylogHref(p))}"><span>${esc(p.name)}</span>${arrSvg}</a>`;
+ }).join('');
+ menu.innerHTML=`<div class="brand-menu-hd">Cambia SkyLog</div>${rows}`;
+}
+function closeBrandPopover(){
+ const wrap=document.getElementById('brandWrap'),btn=document.getElementById('brandBtn'),menu=document.getElementById('brandMenu');
+ if(wrap&&menu&&!menu.hidden){wrap.classList.remove('open');btn.setAttribute('aria-expanded','false');menu.hidden=true;}
+}
+document.getElementById('brandBtn')?.addEventListener('click',e=>{
+ e.stopPropagation();
+ closeIosSels();closeYearPopover();
+ const wrap=document.getElementById('brandWrap'),btn=document.getElementById('brandBtn'),menu=document.getElementById('brandMenu');
+ if(!wrap||!btn||!menu)return;
+ const open=menu.hidden;
+ if(open)renderBrandMenu();
+ wrap.classList.toggle('open',open);btn.setAttribute('aria-expanded',String(open));menu.hidden=!open;
+});
+document.getElementById('brandMenu')?.addEventListener('click',e=>{
+ if(e.target.closest('[data-brand-cur]')){e.stopPropagation();closeBrandPopover();}
+});
 document.getElementById('globalYearBtn').onclick=e=>{
  e.stopPropagation();
- closeIosSels();
+ closeIosSels();closeBrandPopover();
  const wrap=document.getElementById('globalYearWrap'),btn=document.getElementById('globalYearBtn'),menu=document.getElementById('globalYearMenu');
  const open=menu.hidden;
  wrap.classList.toggle('open',open);btn.setAttribute('aria-expanded',String(open));menu.hidden=!open;
@@ -4274,6 +4343,7 @@ document.getElementById('globalYearBtn').onclick=e=>{
 function render(scroll){
  if(globe){globe.destroy();globe=null;}
  syncBrand();
+ closeBrandPopover();
  closeYearPopover();
  closeIosSels();
  renderYearPopover();
@@ -4294,7 +4364,7 @@ document.addEventListener('click',e=>{
  if(sb){
  e.stopPropagation();
  const w=sb.closest('.ios-sel'),m=w.querySelector('.ios-sel-menu'),open=m.hidden;
- closeIosSels(w);closeYearPopover();
+ closeIosSels(w);closeYearPopover();closeBrandPopover();
  w.classList.toggle('open',open);sb.setAttribute('aria-expanded',String(open));m.hidden=!open;
  return;
  }
@@ -4313,13 +4383,14 @@ document.addEventListener('click',e=>{
  }
  if(!e.target.closest('.ios-sel'))closeIosSels();
  if(!e.target.closest('#globalYearWrap'))closeYearPopover();
+ if(!e.target.closest('#brandWrap'))closeBrandPopover();
  if(!e.target.closest('#moreFltWrap')){const mp=document.getElementById('moreFltPop'),mb=document.getElementById('moreFltBtn');if(mp&&!mp.hidden){mp.hidden=true;if(mb)mb.setAttribute('aria-expanded','false');}}
  const t=e.target.closest('[data-flight],[data-ac],[data-ap],[data-year],[data-fa],[data-fc],[data-fm],[data-fall],[data-fmfg],[data-frange],[data-ovrange],[data-ovhabit],[data-fhour],[data-fday],[data-fseat],[data-fdeck],[data-fcountry],[data-fgroup],[data-pgroup],[data-cfilter],[data-cmpfilter],[data-country],[data-allcountry],[data-trip],[data-globetrip],[data-globeplantrip],[data-peer-clear],[data-cont],[data-allap],[data-allac],[data-globeflight],[data-globeplan],[data-route],[data-close],[data-kmmode],[data-expand],[data-newflight],[data-newplanned]');
  if(!t)return;
  const d=t.dataset;
  const resetF=()=>{ui.q='';F_KEYS.forEach(k=>ui[k]='all');};
  if(d.close!==undefined)closeSheet();
- else if(d.peerClear!==undefined){peer=null;ui.countryCmpFilter='all';ui.apCmpFilter='all';ui.acCmpFilter='all';if(ui.globeColor==='compare')ui.globeColor='default';renderPeerBanner();render();toast('Confronto chiuso.');}
+ else if(d.peerClear!==undefined)exitPeer(true);
  else if(d.flight)openSheet(flightDetail(d.flight));
  else if(d.globetrip){const tr=buildTrips().find(x=>x.id===d.globetrip);if(tr){closeSheet(true);ui.globeColor='default';ui.globeSingle={type:'trip',id:tr.id};globeFlyTarget=[tr.first.from,tr.first.to];go('globe');}}
  else if(d.globeplantrip){const ptr=buildPlannedTrips(enrichPlannedList(S.planned)).find(x=>x.id===d.globeplantrip);if(ptr){closeSheet(true);ui.globeColor='default';ui.globeSingle={type:'plannedTrip',id:ptr.id};globeFlyTarget=[ptr.first.from,ptr.first.to];go('globe');}}
@@ -4358,6 +4429,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();downloadCopy();return;}
+  if(e.key==='Escape'&&!sheet.open){closeBrandPopover();closeYearPopover();closeIosSels();return;}
   const tag=(e.target.tagName||'').toLowerCase();
   if(e.key==='Enter'&&e.target.matches&&e.target.matches('[data-flight],[data-ap],[data-allac],[data-country],[data-trip],[data-fhour],[data-fday],[data-fseat],[data-fdeck]')&&tag!=='button'){e.preventDefault();e.target.click();return;}
   if(sheet.open||['input','textarea','select'].includes(tag)||e.metaKey||e.ctrlKey||e.altKey)return;
