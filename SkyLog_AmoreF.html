@@ -4440,5 +4440,6 @@ window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{S=normaliz
 
 load();buildIndex();renderSaveState();ui.view=fromHash();render();
 if(pendingConflict)openSheet(conflictSheet());
+if(/^https?:$/i.test(location.protocol)&&'serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(()=>{});}
 })();
 </script></body></html>
