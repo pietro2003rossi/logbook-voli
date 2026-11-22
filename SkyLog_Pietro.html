@@ -2766,14 +2766,62 @@ function matchPeerPlanned(enrList){
   });
   return {sharedByMyId,peerOnly:pEnr.filter(pf=>!used.has(pf.id))};
 }
-function plannedCountdown(iso,today){
-  const diff=isISO(iso)?dnum(iso)-dnum(today):null;
-  const due=diff!=null&&diff<=0;
-  const lbl=diff==null?'':diff>1?`tra ${nf.format(diff)} giorni`:diff===1?'domani':diff===0?'oggi':'da registrare';
-  return {diff,due,lbl};
+function parseUtcOffsetMin(raw){
+  if(raw==null)return null;
+  const s=String(raw).trim().replace(/[−–]/g,'-');
+  if(!s)return null;
+  if(/^UTC$/i.test(s))return 0;
+  const m=s.match(/UTC\s*([+-])\s*(\d{1,2})(?:(?::(\d{2}))|(?:[.,](\d+)))?/i);
+  if(!m)return null;
+  const sign=m[1]==='-'?-1:1;
+  const h=Number(m[2]);
+  const min=m[3]!=null?Number(m[3]):(m[4]!=null?Math.round(Number('0.'+m[4])*60):0);
+  return sign*(h*60+min);
+}
+function todayISOAt(offsetMin,nowMs=Date.now()){
+  if(offsetMin==null)return todayISO();
+  const d=new Date(nowMs+offsetMin*60000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+}
+function plannedArrivalUtcMs(p,depOff,arrOff){
+  if(!p||!isISO(p.date))return null;
+  const am=toMin(p.arr);
+  if(am==null)return null;
+  const baseUtc=dnum(p.date)*86400000;
+  const toOff=arrOff!=null?arrOff:(depOff!=null?depOff:-new Date(baseUtc).getTimezoneOffset());
+  const fromOff=depOff!=null?depOff:toOff;
+  const dm=toMin(p.dep);
+  let arrUtc=baseUtc+(am-toOff)*60000;
+  if(dm!=null){
+    const depUtc=baseUtc+(dm-fromOff)*60000;
+    while(arrUtc<=depUtc)arrUtc+=86400000;
+  }
+  return arrUtc;
+}
+function plannedCountdown(p,nowMs=Date.now(),apFn=apt){
+  const iso=typeof p==='string'?p:p?.date;
+  if(!isISO(iso))return {diff:null,due:false,landed:false,lbl:''};
+  const pcOff=-new Date(nowMs).getTimezoneOffset();
+  const depRaw=typeof p==='object'&&p?parseUtcOffsetMin(apFn(p.from)?.tz):null;
+  const arrRaw=typeof p==='object'&&p?parseUtcOffsetMin(apFn(p.to)?.tz):null;
+  const depOff=depRaw!=null?depRaw:pcOff;
+  const arrOff=arrRaw!=null?arrRaw:depOff;
+  const todayDep=todayISOAt(depOff,nowMs);
+  const diff=dnum(iso)-dnum(todayDep);
+  const arrUtc=typeof p==='object'&&p?plannedArrivalUtcMs(p,depOff,arrOff):null;
+  let landed=false;
+  if(arrUtc!=null){
+    landed=nowMs>=arrUtc;
+  }else{
+    const todayArr=todayISOAt(arrOff,nowMs);
+    landed=dnum(iso)<dnum(todayArr);
+  }
+  const due=landed||diff<=0;
+  const lbl=landed?'da registrare':(diff>1?`tra ${nf.format(diff)} giorni`:diff===1?'domani':'oggi');
+  return {diff,due,landed,lbl};
 }
 function vPlanned(){
-  const t=todayISO();
+  const nowMs=Date.now();
   const enrList=enrichPlannedList(S.planned);
   const pPeer=matchPeerPlanned(enrList);
   if(!enrList.length&&!pPeer.peerOnly.length){app.innerHTML=`<h1 class="page-title">In programma</h1><p class="page-sub">I prossimi viaggi, con il conto alla rovescia.</p><div class="empty"><b>Nessun volo in programma</b>Aggiungi il prossimo viaggio: quando l’avrai fatto lo registri su SkyLog con un tocco.<br><button class="btn primary" data-newplanned>${ICON.plus} Aggiungi volo in programma</button></div>`;return;}
@@ -2786,8 +2834,8 @@ function vPlanned(){
 
   let recapHTML='';
   if(enrList.length){
-    const nxt=enrList.find(p=>!isISO(p.date)||p.date>=t)||enrList[0];
-    const cdNxt=plannedCountdown(nxt.date,t);
+    const nxt=enrList.find(p=>!plannedCountdown(p,nowMs).landed)||enrList[0];
+    const cdNxt=plannedCountdown(nxt,nowMs);
     const newsSubParts=[];
     if(ms.newCountries.length)newsSubParts.push(`${ms.newCountries.length} ${ms.newCountries.length===1?'paese':'paesi'}`);
     if(ms.newAps.length)newsSubParts.push(`${ms.newAps.length} ${ms.newAps.length===1?'aeroporto':'aeroporti'}`);
@@ -2813,7 +2861,7 @@ function vPlanned(){
 
   const renderCard=(p,isPeerOnly=false)=>{
     const apLook=isPeerOnly?peerApt:apt;
-    const cd=plannedCountdown(p.date,t);
+    const cd=plannedCountdown(p,nowMs,apLook);
     const [y,m,dd]=(p.date||'---').split('-');
     const A=apLook(p.from),B=apLook(p.to),pKmVal=Number(p.dist)||0;
     const tags=isPeerOnly?[]:(ms.perId.get(p.id)||[]);
@@ -2855,7 +2903,7 @@ function vPlanned(){
     bodyHTML=pTrips.map(tr=>{
       const dateLbl=tr.startDate===tr.endDate?fmtDate(tr.startDate):`${fmtDate(tr.startDate)} – ${fmtDate(tr.endDate)}`;
       const kindLbl=tr.isTransfer?'Trasferimento':(tr.isRound?'A/R':(tr.legs.length===1?'Volo singolo':'Sola andata'));
-      const firstCd=plannedCountdown(tr.first.date,t);
+      const firstCd=plannedCountdown(tr.legs.find(l=>!plannedCountdown(l,nowMs).landed)||tr.first,nowMs);
       const tagMap=new Map();
       if(tr.legs.some(l=>pPeer.sharedByMyId.has(l.id)))tagMap.set('both',`<span class="ptag both">Con ${esc(peer.name)}</span>`);
       tr.legs.forEach(l=>(ms.perId.get(l.id)||[]).forEach(tg=>{
@@ -2863,7 +2911,7 @@ function vPlanned(){
       }));
       const tripTags=[...tagMap.values()];
       const tlRows=tr.legs.map((p,i)=>{
-        const A=apt(p.from),B=apt(p.to),cd=plannedCountdown(p.date,t),pKmVal=Number(p.dist)||0;
+        const A=apt(p.from),B=apt(p.to),cd=plannedCountdown(p,nowMs),pKmVal=Number(p.dist)||0;
         let between='';
         if(i<tr.legs.length-1){
           const nx=tr.legs[i+1],L=p._nextLayover;
@@ -3968,9 +4016,9 @@ function vGlobe(){
  const all=derive();
  const years=allYears(all);
  if(ui.year!=='all'&&!years.includes(ui.year))ui.year='all';
- const Y=ui.year, t=todayISO();
+ const Y=ui.year;
  let fl=Y==='all'?all:all.filter(f=>f._y===Y);
- let planned=S.planned.filter(p=>p.from!==p.to&&anyLL(p.from)&&anyLL(p.to)&&(!isISO(p.date)||p.date>=t)&&(Y==='all'||+String(p.date||'').slice(0,4)===Y)).map(p=>({...p}));
+ let planned=S.planned.filter(p=>p.from!==p.to&&anyLL(p.from)&&anyLL(p.to)&&(Y==='all'||+String(p.date||'').slice(0,4)===Y)).map(p=>({...p}));
  let singleLbl='';
  if(ui.globeSingle){
   if(ui.globeSingle.type==='flight'){
