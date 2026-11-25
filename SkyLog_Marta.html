@@ -1149,14 +1149,17 @@ function ianaTzOf(r){
   if(std===0){
     if(c==='islanda')return 'Atlantic/Reykjavik';
     if(c==='portogallo')return 'Europe/Lisbon';
+    if(c==='spagna')return 'Atlantic/Canary';
     if(c==='regno unito'||c==='uk'||c==='gran bretagna'||c==='irlanda')return 'Europe/London';
   }
+  if(std===-1&&c==='portogallo')return 'Atlantic/Azores';
   if(std===1&&EU_1_COUNTRIES.has(c))return 'Europe/Rome';
   if(std===2&&EU_2_COUNTRIES.has(c))return 'Europe/Helsinki';
   if(c==='israele')return 'Asia/Jerusalem';
   if(c==='libano')return 'Asia/Beirut';
   if(c==='palestina')return 'Asia/Hebron';
   if(c==='egitto')return 'Africa/Cairo';
+  if(c==='marocco')return 'Africa/Casablanca';
   if(c==='usa'||c==='stati uniti'||c==='stati uniti d america'||c==='canada'){
     if(std===-10)return 'Pacific/Honolulu';
     if(std===-9)return 'America/Anchorage';
@@ -1241,8 +1244,8 @@ const show=v=>v==null||v===''||v==='/'?'—':v;
 
 const normFlight=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
 function enrichFlights(rawFlights,apFn=apt){
-  const key=f=>String(f.date||'')+(isISO(f.date)?(f.dep||''):'|'+(f.dep||''));
-  const fl=[...rawFlights].map(f=>({...f})).sort((a,b)=>key(a).localeCompare(key(b)));
+  const key=f=>isISO(f.date)?String(f.date)+(f.dep||''):String(f.date||'')+'~';
+  const fl=[...rawFlights].map((f,i)=>({...f,_ord:i})).sort((a,b)=>key(a).localeCompare(key(b))||a._ord-b._ord);
   fl.forEach((f,i)=>{
     f._n=i+1;f._dur=duration(f);f._age=acAge(f);f._y=+String(f.date).slice(0,4);f._m=isISO(f.date)?+String(f.date).slice(5,7):0;
     f._prevLayover=null;f._nextLayover=null;f._overnight=false;f._dow=null;f._hour=null;f._depMs=null;f._arrMs=null;
@@ -1401,10 +1404,14 @@ function inferHomeBases(fl){
   for(let k=1;k<clean.length;k++){
     const prev=clean[k-1],cur=clean[k];
     while(prev.toIdx>prev.fromIdx){
-      const tail=macros[prev.toIdx];
+      const tail=macros[prev.toIdx],before=macros[prev.toIdx-1];
       if(tail&&tail.aFrom===cur.area){
         cur.fromIdx=prev.toIdx;cur.from=tail.date;cur.n++;
         prev.toIdx--;prev.n--;
+        prev.to=macros[prev.toIdx].endDate;
+      }else if(tail&&before&&prev.toIdx-1>prev.fromIdx&&tail.aTo===cur.area&&before.aFrom===cur.area){
+        cur.fromIdx=prev.toIdx-1;cur.from=before.date;cur.n+=2;
+        prev.toIdx-=2;prev.n-=2;
         prev.to=macros[prev.toIdx].endDate;
       }else break;
     }
@@ -1438,7 +1445,8 @@ function buildTrips(flInput,basesOverride){
       const gapD=Math.max(0,Math.round((dnum(b.date)-dnum(a.date))));
       const returnedBase=isInBase(baseA,a.to);
       const startsAtBase=isInBase(baseB,b.from)&&gapD>2;
-      if(returnedBase||startsAtBase||gapD>45)same=false;
+      const closedLoop=areaOf(cur[0].from)===areaOf(a.to)&&areaOf(a.from)!==areaOf(a.to)&&gapD>2;
+      if(returnedBase||startsAtBase||closedLoop||gapD>45)same=false;
       else same=true;
     }
     if(same)cur.push(b);else{groups.push(cur);cur=[b];}
@@ -1595,6 +1603,20 @@ const COUNTRY_META={
   'yemen':['YE','887'],'zambia':['ZM','894'],'zimbabwe':['ZW','716']
 };
 const countryMeta=name=>{const k=norm(name).replace(/[’'`]/g," ").replace(/\s+/g,' ').trim();return COUNTRY_META[k]||COUNTRY_META[k.replace(/\./g,'')]||null;};
+const CANONICAL_COUNTRIES={'DO':'Repubblica Dominicana','GB':'Regno Unito','NL':'Paesi Bassi','CZ':'Repubblica Ceca','AE':'Emirati Arabi Uniti','MK':'Macedonia del Nord','BA':'Bosnia ed Erzegovina','ZA':'Sudafrica','US':'USA'};
+function canonicalCountry(rawName,rows){
+  const s=String(rawName??'').trim();if(!s)return '';
+  const m=countryMeta(s);if(!m)return s;
+  const iso2=m[0],src=rows||(S?.airports?.rows||[]);
+  for(const r of src){if(r&&r[4]&&countryMeta(r[4])?.[0]===iso2)return String(r[4]).trim();}
+  return CANONICAL_COUNTRIES[iso2]||s;
+}
+function sameCountry(a,b){
+  if(!a||!b)return false;
+  if(a===b)return true;
+  const ma=countryMeta(a),mb=countryMeta(b);
+  return !!(ma&&mb&&ma[0]===mb[0]);
+}
 const FLAG_DATA=(()=>{
   const S=(bg,a,b,w)=>{const h=16/3;return `<rect width="24" height="16" fill="${bg}"/>`+(w?`<rect y="0" width="24" height="${w[0]}" fill="${bg}"/><rect y="${w[0]}" width="24" height="${w[1]}" fill="${a}"/><rect y="${w[0]+w[1]}" width="24" height="${w[2]}" fill="${b}"/>`:`<rect y="${h.toFixed(2)}" width="24" height="${h.toFixed(2)}" fill="${a}"/><rect y="${(2*h).toFixed(2)}" width="24" height="${h.toFixed(2)}" fill="${b}"/>`);};
   const V=(a,b,c)=>`<rect width="8" height="16" fill="${a}"/><rect x="8" width="8" height="16" fill="${b}"/><rect x="16" width="8" height="16" fill="${c}"/>`;
@@ -1727,11 +1749,14 @@ function computeCountryStats(fl,apFn=apt,baseCountriesOverride=null){
   const baseCountries=baseCountriesOverride||new Set();
   if(bases){
     bases.forEach(b=>{
-      if(b.area){const A=apFn(b.area.replace(/^AREA:/,''));if(A?.country)baseCountries.add(A.country);}
-      (b.codes||[]).forEach(c=>{const A=apFn(c);if(A?.country)baseCountries.add(A.country);});
+      if(b.area){const A=apFn(b.area.replace(/^AREA:/,''));if(A?.country)baseCountries.add(canonicalCountry(A.country));}
+      (b.codes||[]).forEach(c=>{const A=apFn(c);if(A?.country)baseCountries.add(canonicalCountry(A.country));});
     });
+  }else if(baseCountriesOverride){
+    [...baseCountriesOverride].forEach(c=>{baseCountries.delete(c);baseCountries.add(canonicalCountry(c));});
   }
-  const touch=(country,apCode,f,isTransit)=>{
+  const touch=(rawCountry,apCode,f,isTransit)=>{
+    const country=canonicalCountry(rawCountry);
     if(!country)return;
     let o=map.get(country);
     if(!o){o={country,continent:apFn(apCode)?.continent||'Altro',flights:new Set(),aps:new Set(),stayCount:0,transitCount:0,firstYear:9999,lastYear:0};map.set(country,o);}
@@ -1742,8 +1767,8 @@ function computeCountryStats(fl,apFn=apt,baseCountriesOverride=null){
   };
   fl.forEach(f=>{
     const A=apFn(f.from),B=apFn(f.to);
-    const prevTr=!!(f._prevLayover&&apFn(f._prevLayover.fromAp)?.country===A?.country);
-    const nextTr=!!(f._nextLayover&&apFn(f._nextLayover.toAp)?.country===B?.country);
+    const prevTr=!!(f._prevLayover&&sameCountry(apFn(f._prevLayover.fromAp)?.country,A?.country));
+    const nextTr=!!(f._nextLayover&&sameCountry(apFn(f._nextLayover.toAp)?.country,B?.country));
     if(A?.country)touch(A.country,f.from,f,prevTr);
     if(B?.country)touch(B.country,f.to,f,nextTr);
   });
@@ -1871,7 +1896,18 @@ function openSheet(fn,wide){stack.push({fn,wide});paintSheet();if(!sheet.open)sh
 function paintSheet(){const top=stack[stack.length-1];sheet.classList.toggle('wide',!!top.wide);sheetBody.innerHTML='';top.fn(sheetBody);sheetBody.scrollTop=0;const first=sheetBody.querySelector('[autofocus]');if(first)first.focus();}
 function replaceSheet(fn){stack[stack.length-1].fn=fn;paintSheet();}
 function closeSheet(all){if(all)stack.length=0;else stack.pop();if(stack.length)paintSheet();else if(sheet.open)sheet.close();}
-sheet.addEventListener('cancel',e=>{e.preventDefault();closeSheet();});
+let lastInnerEsc=0;
+function dismissInnerSheetUI(){
+  if(sheetBody.querySelector('.ios-sel.open')){closeIosSels();return true;}
+  const openCmp=[...sheetBody.querySelectorAll('.cmp-pop')].filter(p=>!p.hidden);
+  if(openCmp.length){openCmp.forEach(p=>p.hidden=true);sheetBody.querySelectorAll('.cmp-card.open').forEach(b=>b.classList.remove('open'));return true;}
+  const alCancel=sheetBody.querySelector('.al-row.editing [data-al-cancel]');
+  if(alCancel){alCancel.click();return true;}
+  const aiWrap=sheetBody.querySelector('#aiPasteWrap');
+  if(aiWrap&&!aiWrap.hidden){aiWrap.hidden=true;return true;}
+  return false;
+}
+sheet.addEventListener('cancel',e=>{e.preventDefault();if(Date.now()-lastInnerEsc<150||dismissInnerSheetUI())return;closeSheet();});
 sheet.addEventListener('click',e=>{if(e.target===sheet)closeSheet(true);});
 
 /* ---------------- toast con annulla ---------------- */
@@ -1898,7 +1934,7 @@ function vOverview(){
   }
   const km=sum(fl,f=>f.dist), hours=Math.round(sum(fl,f=>f._dur)/60);
   const codes=new Set(fl.flatMap(f=>[f.from,f.to]).map(s=>String(s).toUpperCase()));
-  const countries=new Set([...codes].map(c=>apt(c)?.country).filter(Boolean));
+  const countries=new Set([...codes].map(c=>canonicalCountry(apt(c)?.country)).filter(Boolean));
   const airlines=new Set(fl.map(f=>String(f.airline).trim().toLowerCase()).filter(Boolean));
   const models=new Set(fl.map(f=>f.ac).filter(Boolean));
   const aged=fl.filter(f=>f._age!=null);
@@ -2074,7 +2110,7 @@ function vOverview(){
     const pFl=Y==='all'?peer.flights:peer.flights.filter(f=>f._y===Y);
     const pKm=sum(pFl,f=>f.dist),pH=Math.round(sum(pFl,f=>f._dur)/60);
     const pCodes=new Set(pFl.flatMap(f=>[f.from,f.to]).map(s=>String(s||'').toUpperCase()).filter(Boolean));
-    const pCountries=new Set([...pCodes].map(c=>(peerApt(c)||{}).country).filter(Boolean));
+    const pCountries=new Set([...pCodes].map(c=>canonicalCountry((peerApt(c)||{}).country)).filter(Boolean));
     const pAirlines=new Set(pFl.map(f=>String(f.airline||'').trim().toLowerCase()).filter(Boolean));
     const cmp=matchPeerFlights(fl,pFl);
     const shKm=sum(cmp.shared,x=>x.my.dist),shH=Math.round(sum(cmp.shared,x=>x.my._dur)/60);
@@ -2186,7 +2222,7 @@ function matchFlightKey(f,k,val){
  if(k==='fmfg')return (IDX.ac[f.ac]?.[1]||'')===val;
  if(k==='fac')return f.ac===val;
  if(k==='fm')return f._m===+val;
- if(k==='fcountry')return (apt(f.from)?.country===val)||(apt(f.to)?.country===val);
+ if(k==='fcountry')return sameCountry(apt(f.from)?.country,val)||sameCountry(apt(f.to)?.country,val);
  if(k==='fseat'){
   const sp=f.seatPos||(f.seat?inferSeatPos(f.ac,f.cls,f.deck,f.seat)?.pos:'');
   return val==='__none__'?!sp:sp===val;
@@ -2585,7 +2621,7 @@ function airlinesSheet(){return el=>{
  rowsEl.addEventListener('keydown',e=>{
   const inp=e.target.closest('.al-rename-in');if(!inp)return;
   if(e.key==='Enter'){e.preventDefault();inp.closest('.al-row')?.querySelector('[data-al-save]')?.click();}
-  else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();editingName=null;mergePending=null;drawRows();}
+  else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();lastInnerEsc=Date.now();editingName=null;mergePending=null;drawRows();}
  });
 
  rowsEl.addEventListener('click',e=>{
@@ -2700,7 +2736,7 @@ function updateFlights(changedKey){
  setIosSelOptions('fac',facOpts,ui.fac);
 
  const flFco=otherFor('fcountry'),coCounts=new Map();
- flFco.forEach(f=>{const s=new Set([apt(f.from)?.country,apt(f.to)?.country].filter(Boolean));s.forEach(c=>coCounts.set(c,(coCounts.get(c)||0)+1));});
+ flFco.forEach(f=>{const s=new Set([canonicalCountry(apt(f.from)?.country),canonicalCountry(apt(f.to)?.country)].filter(Boolean));s.forEach(c=>coCounts.set(c,(coCounts.get(c)||0)+1));});
  const fcoOpts=ensureOpt([['all','Tutti i paesi'],...[...coCounts.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([c,n])=>[c,`${c} (${n})`])],ui.fcountry,v=>v);
  setIosSelOptions('fcountry',fcoOpts,ui.fcountry);
 
@@ -2911,6 +2947,7 @@ const FIELDS=['date','from','to','flight','airline','dep','arr','tz','dist','ac'
 function flightForm(draft0,opts={}){
   const draft={...draft0};
   const yearOnly=/^\d{4}$/.test(String(draft0.date||''))?String(draft0.date):null;
+  let addedApPending=false;
   return el=>{
     const planned=opts.mode==='planned';
     const title=planned?(opts.editId?'Modifica volo in programma':'Nuovo volo in programma'):(opts.editId?'Modifica volo':(opts.plannedId?'Registra volo effettuato':'Nuovo volo'));
@@ -2985,7 +3022,7 @@ function flightForm(draft0,opts={}){
       d.dist=d.dist===''||d.dist==null?'':Number(String(d.dist).replace(',','.'));
       return d;
     }
-    function snapshot(){FIELDS.forEach(k=>{const i=E(k);if(i)draft[k]=i.value;});if(E('alliance'))draft.alliance=E('alliance').value;}
+    function snapshot(){FIELDS.forEach(k=>{const i=E(k);if(i)draft[k]=i.value;});if(E('seatPos')&&!E('seatPos').dataset.manual)draft.seatPos='';if(E('alliance'))draft.alliance=E('alliance').value;}
     function preview(){
       if(planned){const a=E('from').value.trim().toUpperCase(),b=E('to').value.trim().toUpperCase(),g=a&&b&&a!==b?gcKm(a,b):null;E('dist').value=g!=null?Math.round(g):'';}
       const d=collect(),dur=duration(d),age=acAge(d),parts=[];
@@ -3101,7 +3138,9 @@ function flightForm(draft0,opts={}){
         if(day&&dd&&Math.abs(Date.parse(day)-Date.parse(dd))>864e5)msg+=`. <span class="fr-warn">La traccia è del ${esc(fmtDate(day))}: controlla la data.</span>`;
         preview();hint('dist',msg);return;
       }
-      const b=e.target.closest('[data-newap]');if(!b)return;snapshot();openSheet(recordForm('airports',null,{0:b.dataset.newap}));
+      const b=e.target.closest('[data-newap]');if(!b)return;
+      if(E('tz')&&(E('tz').value===''||E('tz').value==='0'||E('tz').classList.contains('autofilled')))draft._recalcTz=true;
+      snapshot();addedApPending=true;openSheet(recordForm('airports',null,{0:b.dataset.newap}));
     });
     form.addEventListener('submit',e=>{
       e.preventDefault();
@@ -3132,8 +3171,9 @@ function flightForm(draft0,opts={}){
       commit();closeSheet(true);render();
       toast(planned?'Volo in programma salvato':(opts.editId?'Modifiche salvate':`Volo ${d.from}–${d.to} salvato`));
     });
-    airportHints();updateSeatUI(false);preview();
-    if(draft.from&&draft.to&&!opts.editId)onRoute();
+    airportHints();updateSeatUI(!curPos);preview();
+    if(draft._recalcTz&&E('tz')){E('tz').classList.add('autofilled');delete draft._recalcTz;}
+    if(draft.from&&draft.to&&(!opts.editId||addedApPending)){addedApPending=false;onRoute();}
   };
 }
 
@@ -4004,6 +4044,7 @@ function parseAiAirportText(txt,cols){
     let val=m[2].trim().replace(/^`+|`+$/g,'').replace(/^\*\*|\*\*$/g,'').trim();
     if(/^\[.*\]$/.test(val))return;
     if(idx===0||idx===2)val=val.toUpperCase();
+    else if(idx===4)val=canonicalCountry(val);
     else if(numCols.has(idx)){
       const cleaned=val.replace(/\s*(?:m|km|°c|°|mln|milioni|km²|km2)\s*$/i,'').trim();
       const num=parseCell(cleaned);
@@ -4091,7 +4132,7 @@ function recordForm(kind,key,prefill={}){return el=>{
   form.addEventListener('submit',e=>{
     e.preventDefault();
     const r=T.cols.map((c,i)=>form.elements['c'+i]?parseCell(form.elements['c'+i].value):(idx>=0?vals[i]:''));
-    if(!isAc){const ri=T.cols.indexOf(RWYC),st=ri>=0?parseRunwayStats(r[ri]):null;Object.entries(rwyAuto).forEach(([i,k])=>{r[i]=st&&st[k]!=null?st[k]:(idx>=0?vals[i]:'/');});r[0]=String(r[0]).toUpperCase();}
+    if(!isAc){const ri=T.cols.indexOf(RWYC),st=ri>=0?parseRunwayStats(r[ri]):null;Object.entries(rwyAuto).forEach(([i,k])=>{r[i]=st&&st[k]!=null?st[k]:(idx>=0?vals[i]:'/');});r[0]=String(r[0]).toUpperCase();if(r[4])r[4]=canonicalCountry(r[4],T.rows.filter((_,j)=>j!==idx));}
     if(isAc)computeAircraft(r);
     const k=String(r[0]).trim();
     const dup=T.rows.findIndex(x=>String(x[0]).toUpperCase()===k.toUpperCase());
@@ -4441,15 +4482,15 @@ function countryDetail(countryName){return el=>{
   const all=derive();
   const Y=ui.year;
   const flYr=Y==='all'?all:all.filter(f=>f._y===Y);
-  const flAll=flYr.filter(f=>apt(f.from)?.country===countryName||apt(f.to)?.country===countryName);
-  const stats=computeCountryStats(flYr).find(c=>c.country===countryName);
+  const flAll=flYr.filter(f=>sameCountry(apt(f.from)?.country,countryName)||sameCountry(apt(f.to)?.country,countryName));
+  const stats=computeCountryStats(flYr).find(c=>sameCountry(c.country,countryName));
   const m=countryMeta(countryName),flag=flagHTML(m?.[0]);
   const titleH=headH(`${flag}<span>${esc(countryName)}</span>`);
   const countAps=(flList,apFn)=>{
     const mp=new Map();
     flList.forEach(f=>{
       new Set([f.from,f.to].map(r=>String(r||'').toUpperCase()).filter(Boolean)).forEach(code=>{
-        if(apFn(code)?.country===countryName)mp.set(code,(mp.get(code)||0)+1);
+        if(sameCountry(apFn(code)?.country,countryName))mp.set(code,(mp.get(code)||0)+1);
       });
     });
     return mp;
@@ -4458,8 +4499,8 @@ function countryDetail(countryName){return el=>{
 
   if(peer){
     const pYr=Y==='all'?peer.flights:peer.flights.filter(f=>f._y===Y);
-    const pFlAll=pYr.filter(f=>peerApt(f.from)?.country===countryName||peerApt(f.to)?.country===countryName);
-    const pStats=computeCountryStats(pYr,peerApt,inferPeerBaseCountries(pYr,peerApt)).find(c=>c.country===countryName);
+    const pFlAll=pYr.filter(f=>sameCountry(peerApt(f.from)?.country,countryName)||sameCountry(peerApt(f.to)?.country,countryName));
+    const pStats=computeCountryStats(pYr,peerApt,inferPeerBaseCountries(pYr,peerApt)).find(c=>sameCountry(c.country,countryName));
     const peerApCnt=countAps(pYr,peerApt);
     const aps=[...new Set([...(stats?.aps||[]),...(pStats?.aps||[])])].sort((a,b)=>((myApCnt.get(b)||0)+(peerApCnt.get(b)||0))-((myApCnt.get(a)||0)+(peerApCnt.get(a)||0))||a.localeCompare(b));
     const recent=[...flAll].reverse(),pRecent=[...pFlAll].reverse();
@@ -5123,7 +5164,10 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();downloadCopy();return;}
-  if(e.key==='Escape'&&!sheet.open){closeBrandPopover();closeYearPopover();closeIosSels();return;}
+  if(e.key==='Escape'){
+    if(sheet.open){if(dismissInnerSheetUI()){lastInnerEsc=Date.now();e.preventDefault();e.stopPropagation();}return;}
+    closeBrandPopover();closeYearPopover();closeIosSels();return;
+  }
   const tag=(e.target.tagName||'').toLowerCase();
   if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-laygrp],[data-cont],[data-flight],[data-ap],[data-ac],[data-allac],[data-country],[data-trip],[data-fa],[data-fc],[data-fm],[data-fall],[data-fmfg],[data-frange],[data-route],[data-fhour],[data-fday],[data-fseat],[data-fdeck]')&&tag!=='button'&&tag!=='a'){e.preventDefault();e.target.click();return;}
   if(sheet.open||['input','textarea','select'].includes(tag)||e.metaKey||e.ctrlKey||e.altKey)return;
