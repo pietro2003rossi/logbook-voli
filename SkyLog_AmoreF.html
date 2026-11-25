@@ -333,6 +333,7 @@ legend{font-size:15px;font-weight:600;margin-bottom:12px;padding:0}
 .year-pop-wrap.open .year-pill svg,.ios-sel.open .ios-sel-btn svg{transform:rotate(180deg)}
 .year-menu,.ios-sel-menu{position:absolute;top:calc(100% + 8px);right:0;min-width:168px;max-height:320px;overflow-y:auto;background:rgba(28,28,30,.92);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border:1px solid var(--sep);border-radius:16px;padding:6px;box-shadow:0 16px 40px rgba(0,0,0,.45);z-index:60;display:flex;flex-direction:column;gap:2px}
 .ios-sel-menu{left:0;right:auto;min-width:max(100%,220px);max-width:calc(100vw - 32px)}
+.ios-sel-menu.up{top:auto;bottom:calc(100% + 8px)}
 .year-opt{appearance:none;border:0;background:transparent;color:var(--text);font-size:14px;font-weight:500;padding:8px 12px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;transition:background .12s}
 .year-opt:hover{background:var(--fill)}
 .year-opt[aria-selected="true"]{color:var(--accent);font-weight:600;background:var(--accent-soft)}
@@ -732,6 +733,36 @@ body.is-globe .brand-menu{background:rgba(28,28,30,.9);border-color:rgba(255,255
 .ai-paste-area{width:100%;min-height:110px;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px;border-radius:10px;border:1px solid var(--sep);background:var(--surface);color:var(--text);resize:vertical}
 .peer-quick-box{padding:13px 16px;border-bottom:1px solid var(--sep);display:flex;flex-direction:column;gap:8px}
 .peer-quick-btns{display:flex;flex-wrap:wrap;gap:8px}
+.panel-ghost-btn{appearance:none;border:0;background:none;color:var(--text-3);font-size:13px;font-weight:500;padding:4px 8px;margin:-4px -8px -4px 0;border-radius:8px;cursor:pointer;transition:color .15s,background .15s}
+.panel-ghost-btn:hover{color:var(--text);background:var(--fill)}
+.al-toolbar{display:flex;align-items:center;gap:10px;margin:0 0 14px;flex-wrap:wrap}
+.al-list{background:var(--fill);border-radius:14px;overflow:visible;margin:0 0 20px}
+.al-row{display:grid;grid-template-columns:minmax(0,1fr) 92px 164px auto;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--sep);transition:background .15s}
+.al-row:first-child{border-radius:14px 14px 0 0}
+.al-row:last-child{border-bottom:0;border-radius:0 0 14px 14px}
+.al-row:only-child{border-radius:14px}
+.al-row.editing{background:rgba(159,46,233,.08)}
+.al-name{min-width:0}
+.al-name b{display:block;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.al-name small{display:block;font-size:12px;color:var(--text-2)}
+.al-code-in{font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;padding:7px 9px;border-radius:10px;border:1px solid var(--sep);background:var(--surface);color:var(--text);width:100%;text-align:center}
+.al-code-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.al-row .ios-sel,.al-add-grid .ios-sel{display:flex;width:100%}
+.al-row .ios-sel-btn,.al-add-grid .ios-sel-btn{width:100%;min-height:34px;padding:7px 11px;border-radius:10px;font-size:13px;font-weight:500;background:var(--surface)}
+.al-row .ios-sel-menu,.al-add-grid .ios-sel-menu{left:auto;right:0;min-width:176px}
+.al-row-acts{display:inline-flex;align-items:center;gap:4px}
+.al-edit-bar{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:2px}
+.al-rename-in{flex:1 1 200px;min-width:0;font:inherit;font-size:14px;font-weight:500;padding:7px 11px;border-radius:10px;border:1px solid var(--accent);background:var(--surface);color:var(--text);box-shadow:0 0 0 3px var(--accent-soft)}
+.al-rename-in:focus{outline:none}
+.al-merge-note{grid-column:1/-1;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.28);border-radius:10px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text)}
+.al-add-grid{display:grid;grid-template-columns:minmax(0,1fr) 92px 164px auto;gap:8px;align-items:center}
+@media (max-width:640px){
+  .al-row{grid-template-columns:1fr 86px;gap:8px}
+  .al-row-sel{grid-column:1/2}
+  .al-row-acts{justify-self:end}
+  .al-add-grid{grid-template-columns:1fr 1fr}
+  .al-add-grid .al-add-name,.al-add-grid button[type="submit"]{grid-column:1/-1}
+}
 </style>
 </head>
 <body>
@@ -855,7 +886,8 @@ function syncBrand(){
 function normalizeState(o){
   if(typeof o.owner!=='string')o.owner=defaultOwner(o.storageKey);
   o.planned=Array.isArray(o.planned)?o.planned:[];
-  o.alliances=o.alliances||{};
+  o.alliances=o.alliances&&typeof o.alliances==='object'?o.alliances:{};
+  o.airlineCodes=o.airlineCodes&&typeof o.airlineCodes==='object'?o.airlineCodes:{};
   o.bases=Array.isArray(o.bases)?o.bases:[];
   o.tripEdits=o.tripEdits&&typeof o.tripEdits==='object'?o.tripEdits:{};
   if(!Array.isArray(o.tripEdits.splits))o.tripEdits.splits=[];
@@ -934,13 +966,19 @@ function renderSaveState(){
   el.innerHTML=`<span>${storageOK?(pending?'Nel browser':'Salvato'):'Locale off'}</span>`;
   el.title=storageOK?(pending?'Le ultime modifiche sono nel browser ma non ancora in un file: usa “Scarica copia aggiornata” per metterle al sicuro.':'I dati coincidono con quelli del file.'):'Archivio e backup';
 }
+const normAirlineCodes=raw=>uniq(String(raw||'').toUpperCase().split(/[\s,;\/]+/).map(x=>x.trim()).filter(x=>/^[A-Z0-9]{2,3}$/.test(x))).join(', ');
 function buildIndex(){
-  const ap={},ac={},al={};
+  const ap={},ac={},al={},alCode={};
   S.airports.rows.forEach(r=>{ap[String(r[0]).toUpperCase()]=r;});
   S.aircraft.rows.forEach(r=>{ac[String(r[0])]=r;});
   Object.entries(S.alliances).forEach(([k,v])=>{al[k.trim().toLowerCase()]=v;});
+  Object.entries(S.airlineCodes||{}).forEach(([name,raw])=>{
+    String(raw||'').toUpperCase().split(/[\s,;\/]+/).map(x=>x.trim()).filter(x=>/^[A-Z0-9]{2,3}$/.test(x)).forEach(c=>{
+      if(!alCode[c])alCode[c]=name;
+    });
+  });
   const lat=S.airports.cols.indexOf(LATC),lon=S.airports.cols.indexOf(LONC);
-  IDX={ap,ac,al,lat,lon,areas:{},areaLabels:{},flights:null,trips:null,bases:null};
+  IDX={ap,ac,al,alCode,lat,lon,areas:{},areaLabels:{},flights:null,trips:null,bases:null};
   buildGeoAreas();
 }
 function buildGeoAreas(){
@@ -2097,7 +2135,7 @@ function vOverview(){
   </div>
   <div class="panels">
     ${chart}
-    <div class="panel"><div class="panel-head"><h2>Compagnie aeree</h2></div>${hbars(byAirline,{limit:7,key:'al'})}</div>
+    <div class="panel"><div class="panel-head"><h2>Compagnie aeree</h2><button type="button" class="panel-ghost-btn" data-manage-airlines title="Gestisci codici IATA, alleanze e nomi compagnie">Gestisci</button></div>${hbars(byAirline,{limit:7,key:'al'})}</div>
     <div class="panel"><div class="panel-head"><h2>Modelli</h2></div>${hbars(byModel,{limit:7,key:'mo'})}</div>
     <div class="panel"><div class="panel-head"><h2>Alleanze</h2></div>${hbars(byAll)}</div>
     <div class="panel"><div class="panel-head"><h2>Costruttori</h2></div>${hbars(byMfg)}</div>
@@ -2403,6 +2441,199 @@ function basesSheet(editIdx=null){return el=>{
   commit();replaceSheet(basesSheet());render();toast(editIdx!=null?'Base aggiornata.':'Base aggiunta.');
  };
 };}
+function airlinesSheet(){return el=>{
+ const allChoices=uniq([...ALLIANCES,...Object.values(S.alliances||{}).filter(x=>x&&x!=='/')]);
+ const alOpts=[['','Nessuna alleanza'],...allChoices.map(a=>[a,a])];
+ const findKeyCI=(obj,name)=>{const low=String(name||'').trim().toLowerCase();return Object.keys(obj||{}).find(k=>k.trim().toLowerCase()===low);};
+ const collectAirlines=()=>{
+  const map=new Map();
+  const ensure=(rawName)=>{
+   const nm=String(rawName||'').trim();if(!nm)return null;
+   const low=nm.toLowerCase();
+   let o=map.get(low);
+   if(!o){o={name:nm,nFlights:0,nPlanned:0,autoSet:new Set(),manualCode:'',al:''};map.set(low,o);}
+   return o;
+  };
+  Object.keys(S.alliances||{}).forEach(k=>ensure(k));
+  Object.keys(S.airlineCodes||{}).forEach(k=>ensure(k));
+  (S.flights||[]).forEach(f=>{
+   const o=ensure(f.airline);if(!o)return;
+   o.nFlights++;
+   const m=String(f.flight||'').trim().toUpperCase().match(/^([A-Z0-9]{2,3})\s*\d/);
+   if(m)o.autoSet.add(m[1]);
+  });
+  (S.planned||[]).forEach(p=>{
+   const o=ensure(p.airline);if(!o)return;
+   o.nPlanned++;
+   const m=String(p.flight||'').trim().toUpperCase().match(/^([A-Z0-9]{2,3})\s*\d/);
+   if(m)o.autoSet.add(m[1]);
+  });
+  return [...map.values()].map(o=>{
+   const mk=findKeyCI(S.airlineCodes,o.name);
+   return {...o,manualCode:mk?String(S.airlineCodes[mk]||''):'',autoCodes:[...o.autoSet].sort().join(', '),al:alliance(o.name)};
+  }).sort((a,b)=>b.nFlights-a.nFlights||b.nPlanned-a.nPlanned||a.name.localeCompare(b.name,'it'));
+ };
+ let qStr='',editingName=null,mergePending=null;
+ el.innerHTML=`${head('Compagnie aeree')}
+ <p class="muted" style="margin:-10px 0 14px;font-size:15px">Modifica codici IATA, alleanze e nomi delle compagnie. I codici impostati qui hanno priorità nel form Nuovo volo.</p>
+ <div class="al-toolbar">
+  <label class="search" style="flex:1 1 220px">${ICON.search}<input type="search" id="alSearch" placeholder="Cerca compagnia" aria-label="Cerca compagnie"></label>
+  <span class="muted small" id="alCount"></span>
+ </div>
+ <div id="alRows" class="al-list"></div>
+ <form id="alAddForm" class="form" novalidate autocomplete="off">
+  <fieldset style="margin-bottom:8px"><legend>Aggiungi compagnia</legend>
+   <div class="al-add-grid">
+    <input id="alAddName" class="al-add-name" placeholder="Nome compagnia" aria-label="Nome compagnia" style="font:inherit;font-size:14px;padding:8px 11px;border-radius:10px;border:1px solid var(--sep);background:var(--surface);color:var(--text)">
+    <input id="alAddCode" class="al-code-in" placeholder="Codice" maxlength="14" aria-label="Codice IATA" spellcheck="false">
+    ${sel('alAddAll',alOpts,'','Alleanza','alAddAll')}
+    <button type="submit" class="btn sm primary">Aggiungi</button>
+   </div>
+  </fieldset>
+ </form>`;
+
+ const rowsEl=el.querySelector('#alRows'),cntEl=el.querySelector('#alCount');
+ const applyRename=(oldName,targetName,isMerge)=>{
+  const snap=serialize(S);
+  const lowOld=oldName.toLowerCase();
+  let moved=0;
+  (S.flights||[]).forEach(f=>{if(String(f.airline||'').trim().toLowerCase()===lowOld){f.airline=targetName;moved++;}});
+  (S.planned||[]).forEach(p=>{if(String(p.airline||'').trim().toLowerCase()===lowOld){p.airline=targetName;moved++;}});
+  const akOld=findKeyCI(S.alliances,oldName),akDst=isMerge?findKeyCI(S.alliances,targetName):null,akTarget=akDst||targetName;
+  if(akOld){
+   const val=S.alliances[akOld];
+   if(!akDst||(S.alliances[akDst]==='/'&&val&&val!=='/'))S.alliances[akTarget]=val;
+   if(akOld!==akTarget)delete S.alliances[akOld];
+  }
+  const ckOld=findKeyCI(S.airlineCodes,oldName),ckDst=isMerge?findKeyCI(S.airlineCodes,targetName):null,ckTarget=ckDst||targetName;
+  if(ckOld){
+   const merged=normAirlineCodes([ckDst?S.airlineCodes[ckDst]:'',S.airlineCodes[ckOld]].filter(Boolean).join(', '));
+   if(merged)S.airlineCodes[ckTarget]=merged;
+   if(ckOld!==ckTarget)delete S.airlineCodes[ckOld];
+  }
+  editingName=null;mergePending=null;
+  buildIndex();commit();render();drawRows();
+  toast(isMerge?`“${oldName}” unita a “${targetName}” (${moved} voli aggiornati)`:`Rinominata in “${targetName}” (${moved} voli aggiornati)`,snap);
+ };
+ const drawRows=()=>{
+  const list=collectAirlines();
+  const q=norm(qStr).trim();
+  const filtered=q?list.filter(o=>norm([o.name,o.manualCode,o.autoCodes,o.al||'nessuna'].join(' ')).includes(q)):list;
+  if(cntEl)cntEl.textContent=`${filtered.length}${filtered.length!==list.length?' / '+list.length:''} compagnie`;
+  if(!filtered.length){rowsEl.innerHTML='<div style="padding:20px;text-align:center" class="muted small">Nessuna compagnia trovata.</div>';return;}
+  rowsEl.innerHTML=filtered.map((o,i)=>{
+   const subParts=[];
+   if(o.nFlights)subParts.push(`${o.nFlights} ${o.nFlights===1?'volo':'voli'}`);
+   if(o.nPlanned)subParts.push(`${o.nPlanned} in programma`);
+   const subTxt=subParts.length?subParts.join(' · '):'Nessun volo registrato';
+   const canDel=o.nFlights===0&&o.nPlanned===0;
+   const isEd=editingName===o.name;
+   const editVal=(isEd&&mergePending?.from===o.name)?mergePending.draft:o.name;
+   const editBar=isEd?`<div class="al-edit-bar">
+    <input type="text" class="al-rename-in" value="${esc(editVal)}" placeholder="Nuovo nome" aria-label="Nuovo nome per ${esc(o.name)}">
+    <button type="button" class="btn sm primary" data-al-save>Salva</button>
+    <button type="button" class="btn sm ghost" data-al-cancel>Annulla</button>
+   </div>`:'';
+   const mergeBar=(isEd&&mergePending?.from===o.name)?`<div class="al-merge-note">
+    <span>“<b>${esc(mergePending.to)}</b>” esiste già: unire i voli di “${esc(o.name)}”?</span>
+    <span style="display:inline-flex;gap:6px"><button type="button" class="btn sm primary" data-al-merge-ok>Unisci</button><button type="button" class="btn sm ghost" data-al-cancel>Annulla</button></span>
+   </div>`:'';
+   return `<div class="al-row${isEd?' editing':''}" data-al-name="${esc(o.name)}">
+    <div class="al-name"><b>${esc(o.name)}</b><small>${esc(subTxt)}</small></div>
+    <input type="text" class="al-code-in" value="${esc(o.manualCode)}" placeholder="${esc(o.autoCodes||'—')}" title="Codice IATA" aria-label="Codice ${esc(o.name)}" spellcheck="false">
+    <div class="al-row-sel">${sel('alSel_'+i,alOpts,o.al||'','Alleanza '+o.name,'al')}</div>
+    <div class="al-row-acts">
+     <button type="button" class="btn sm ghost" data-al-rename>${isEd?'Chiudi':'Rinomina'}</button>
+     ${canDel?`<button type="button" class="btn sm danger" data-al-del title="Rimuovi compagnia" aria-label="Rimuovi ${esc(o.name)}">✕</button>`:''}
+    </div>
+    ${editBar}${mergeBar}
+   </div>`;
+  }).join('');
+  if(editingName){
+   const inp=rowsEl.querySelector('.al-rename-in');
+   if(inp){inp.focus();inp.select();}
+  }
+ };
+
+ el.querySelector('#alSearch').addEventListener('input',e=>{qStr=e.target.value;editingName=null;mergePending=null;drawRows();});
+
+ rowsEl.addEventListener('change',e=>{
+  const rowEl=e.target.closest('.al-row');if(!rowEl)return;
+  const name=rowEl.dataset.alName;
+  if(e.target.classList.contains('al-code-in')){
+   const cleaned=normAirlineCodes(e.target.value);
+   e.target.value=cleaned;
+   if(!S.airlineCodes)S.airlineCodes={};
+   const oldK=findKeyCI(S.airlineCodes,name);
+   if(oldK&&oldK!==name)delete S.airlineCodes[oldK];
+   if(cleaned)S.airlineCodes[name]=cleaned;
+   else delete S.airlineCodes[oldK||name];
+   const dupCodes=cleaned?cleaned.split(',').map(x=>x.trim()).filter(c=>Object.entries(S.airlineCodes).some(([k,v])=>k.toLowerCase()!==name.toLowerCase()&&String(v).split(/[\s,;\/]+/).includes(c))):[];
+   buildIndex();commit();
+   toast(cleaned?(dupCodes.length?`Codice ${cleaned} salvato (usato anche altrove: ${dupCodes.join(', ')})`:`Codice ${name}: ${cleaned}`):`Codice manuale rimosso per ${name}`);
+  }else if(e.target.tagName==='SELECT'){
+   const val=e.target.value;
+   if(!S.alliances)S.alliances={};
+   const oldK=findKeyCI(S.alliances,name);
+   if(oldK&&oldK!==name)delete S.alliances[oldK];
+   S.alliances[name]=val||'/';
+   buildIndex();commit();render();
+   toast(`${name}: ${val||'Nessuna alleanza'}`);
+  }
+ });
+
+ rowsEl.addEventListener('keydown',e=>{
+  const inp=e.target.closest('.al-rename-in');if(!inp)return;
+  if(e.key==='Enter'){e.preventDefault();inp.closest('.al-row')?.querySelector('[data-al-save]')?.click();}
+  else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();editingName=null;mergePending=null;drawRows();}
+ });
+
+ rowsEl.addEventListener('click',e=>{
+  const rowEl=e.target.closest('.al-row');if(!rowEl)return;
+  const oldName=rowEl.dataset.alName;
+  if(e.target.closest('[data-al-rename]')){
+   if(editingName===oldName){editingName=null;mergePending=null;}
+   else{editingName=oldName;mergePending=null;}
+   drawRows();
+  }else if(e.target.closest('[data-al-cancel]')){
+   editingName=null;mergePending=null;drawRows();
+  }else if(e.target.closest('[data-al-save]')){
+   const newName=String(rowEl.querySelector('.al-rename-in')?.value||'').trim();
+   if(!newName||newName===oldName){editingName=null;mergePending=null;drawRows();return;}
+   const existing=collectAirlines().find(o=>o.name.toLowerCase()===newName.toLowerCase()&&o.name!==oldName);
+   if(existing){mergePending={from:oldName,to:existing.name,draft:newName};drawRows();return;}
+   applyRename(oldName,newName,false);
+  }else if(e.target.closest('[data-al-merge-ok]')){
+   if(mergePending&&mergePending.from===oldName)applyRename(oldName,mergePending.to,true);
+  }else if(e.target.closest('[data-al-del]')){
+   const snap=serialize(S);
+   const ak=findKeyCI(S.alliances,oldName),ck=findKeyCI(S.airlineCodes,oldName);
+   if(ak)delete S.alliances[ak];
+   if(ck)delete S.airlineCodes[ck];
+   buildIndex();commit();render();drawRows();
+   toast(`“${oldName}” rimossa dall’archivio`,snap);
+  }
+ });
+
+ el.querySelector('#alAddForm').onsubmit=e=>{
+  e.preventDefault();
+  const nameIn=el.querySelector('#alAddName'),codeIn=el.querySelector('#alAddCode'),allIn=el.querySelector('#alAddAll');
+  const name=String(nameIn.value||'').trim();
+  if(!name){nameIn.focus();return toast('Inserisci il nome della compagnia.');}
+  const code=normAirlineCodes(codeIn.value);
+  const al=allIn.value;
+  if(!S.alliances)S.alliances={};if(!S.airlineCodes)S.airlineCodes={};
+  const ak=findKeyCI(S.alliances,name)||name;
+  S.alliances[ak]=al||'/';
+  const ck=findKeyCI(S.airlineCodes,name)||name;
+  if(code)S.airlineCodes[ck]=code;
+  nameIn.value='';codeIn.value='';allIn.value='';syncIosSel(allIn);
+  buildIndex();commit();render();drawRows();
+  toast(`${name} aggiunta`);
+ };
+
+ drawRows();
+};}
 function updateFlights(changedKey){
  const rawQ=ui.q.trim();
  const routeMatch=rawQ.match(/^([a-zA-Z]{3})[\s\-–→⇄/]+([a-zA-Z]{3})$/);
@@ -2685,7 +2916,7 @@ function flightForm(draft0,opts={}){
     const title=planned?(opts.editId?'Modifica volo in programma':'Nuovo volo in programma'):(opts.editId?'Modifica volo':(opts.plannedId?'Registra volo effettuato':'Nuovo volo'));
     const sorted=derive();
     const last=pred=>{for(let i=sorted.length-1;i>=0;i--)if(pred(sorted[i]))return sorted[i];return null;};
-    const airlines=uniq([...S.flights.map(f=>f.airline),...Object.keys(S.alliances)]).sort((a,b)=>a.localeCompare(b));
+    const airlines=uniq([...S.flights.map(f=>f.airline),...Object.keys(S.alliances),...Object.keys(S.airlineCodes||{})]).sort((a,b)=>a.localeCompare(b));
     const models=uniq([...S.aircraft.rows.map(r=>String(r[0])),...S.flights.map(f=>f.ac)]);
     const regs=uniq(S.flights.map(f=>f.reg)).sort();
     const classes=uniq([...CLASSES,...S.flights.map(f=>f.cls)]);
@@ -2828,8 +3059,12 @@ function flightForm(draft0,opts={}){
     }
     E('airline').addEventListener('change',syncAlliance);
     E('flight').addEventListener('change',()=>{
-      const code=E('flight').value.trim().toUpperCase().replace(/^([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)$/,'$1 $2');E('flight').value=code;
-      const pre=code.slice(0,2);if(pre.length<2)return;
+      const code=E('flight').value.trim().toUpperCase().replace(/^([A-Z0-9]{2,3})\s*(\d{1,4}[A-Z]?)$/,'$1 $2');E('flight').value=code;
+      const preMatch=code.match(/^([A-Z0-9]{2,3})\s*\d/);
+      const pre3=preMatch?preMatch[1]:'',pre=code.slice(0,2);
+      if(pre.length<2)return;
+      const mapped=(pre3&&IDX.alCode?.[pre3])||IDX.alCode?.[pre];
+      if(mapped){fill('airline',mapped);syncAlliance();return;}
       const m=last(f=>f.flight&&f.airline&&f.flight.toUpperCase().replace(/\s/g,'').startsWith(pre));
       if(m){fill('airline',m.airline);syncAlliance();}
     });
@@ -4816,6 +5051,13 @@ document.addEventListener('click',e=>{
  e.stopPropagation();
  const w=sb.closest('.ios-sel'),m=w.querySelector('.ios-sel-menu'),open=m.hidden;
  closeIosSels(w);closeYearPopover();closeBrandPopover();
+ if(open){
+  const box=(sb.closest('.sheet-body')||document.documentElement).getBoundingClientRect();
+  const r=sb.getBoundingClientRect();
+  const spaceBelow=Math.min(box.bottom,window.innerHeight)-r.bottom;
+  const spaceAbove=r.top-Math.max(box.top,0);
+  m.classList.toggle('up',spaceBelow<210&&spaceAbove>spaceBelow);
+ }
  w.classList.toggle('open',open);sb.setAttribute('aria-expanded',String(open));m.hidden=!open;
  return;
  }
@@ -4836,11 +5078,12 @@ document.addEventListener('click',e=>{
  if(!e.target.closest('#globalYearWrap'))closeYearPopover();
  if(!e.target.closest('#brandWrap'))closeBrandPopover();
  if(!e.target.closest('#moreFltWrap')){const mp=document.getElementById('moreFltPop'),mb=document.getElementById('moreFltBtn');if(mp&&!mp.hidden){mp.hidden=true;if(mb)mb.setAttribute('aria-expanded','false');}}
- const t=e.target.closest('[data-flight],[data-ac],[data-ap],[data-year],[data-fa],[data-fc],[data-fm],[data-fall],[data-fmfg],[data-frange],[data-ovrange],[data-ovhabit],[data-fhour],[data-fday],[data-fseat],[data-fdeck],[data-fcountry],[data-fgroup],[data-pgroup],[data-cfilter],[data-cmpfilter],[data-country],[data-allcountry],[data-trip],[data-globetrip],[data-globeplantrip],[data-peer-clear],[data-cont],[data-allap],[data-allac],[data-globeflight],[data-globeplan],[data-route],[data-close],[data-kmmode],[data-expand],[data-newflight],[data-newplanned]');
+ const t=e.target.closest('[data-flight],[data-ac],[data-ap],[data-year],[data-fa],[data-fc],[data-fm],[data-fall],[data-fmfg],[data-frange],[data-ovrange],[data-ovhabit],[data-fhour],[data-fday],[data-fseat],[data-fdeck],[data-fcountry],[data-fgroup],[data-pgroup],[data-cfilter],[data-cmpfilter],[data-country],[data-allcountry],[data-trip],[data-globetrip],[data-globeplantrip],[data-peer-clear],[data-cont],[data-allap],[data-allac],[data-globeflight],[data-globeplan],[data-route],[data-close],[data-kmmode],[data-expand],[data-newflight],[data-newplanned],[data-manage-airlines]');
  if(!t)return;
  const d=t.dataset;
  const resetF=()=>{ui.q='';F_KEYS.forEach(k=>ui[k]='all');};
  if(d.close!==undefined)closeSheet();
+ else if(d.manageAirlines!==undefined)openSheet(airlinesSheet(),true);
  else if(d.peerClear!==undefined)exitPeer(true);
  else if(d.flight)openSheet(flightDetail(d.flight));
  else if(d.globetrip){const tr=buildTrips().find(x=>x.id===d.globetrip);if(tr){closeSheet(true);ui.globeColor='default';ui.globeSingle={type:'trip',id:tr.id};globeFlyTarget=[tr.first.from,tr.first.to];go('globe');}}
